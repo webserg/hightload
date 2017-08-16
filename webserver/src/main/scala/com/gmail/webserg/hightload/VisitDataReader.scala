@@ -1,4 +1,5 @@
 package com.gmail.webserg.hightload
+
 import spray.json._
 
 object UserProtocol extends DefaultJsonProtocol {
@@ -7,9 +8,9 @@ object UserProtocol extends DefaultJsonProtocol {
   implicit def userListFormat = jsonFormat6(User)
 }
 
-object UserDataReader {
+object VisitDataReader {
 
-  final case class User(id: Int, first_name: String, last_name: String, birth_date: Long, gender: String, email: String)
+  final case class Visit(id: Int, place: String, country: String, birth_date: Long, gender: String, email: String)
   final case class NamedList[A](users: List[A])
 
   def readData(in: String): NamedList[User] = {
