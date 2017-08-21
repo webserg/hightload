@@ -3,16 +3,16 @@ package com.gmail.webserg.hightload
 import akka.actor.{Actor, ActorLogging, Props}
 import com.gmail.webserg.hightload.UserDataReader.User
 
-class UserActor(val users: Map[Int, User]) extends Actor with ActorLogging{
+class UserQueryActor(val users: Map[Int, User]) extends Actor with ActorLogging{
 
   override def receive: Receive = {
     case id: Int =>
-      sender ! Option(users.get(id))
+      sender ! users.get(id)
   }
 }
 
-object UserActor {
+object UserQueryActor {
   val name: String = "user"
 
-  def props: Props = Props[UserActor]
+  def props: Props = Props[UserQueryActor]
 }

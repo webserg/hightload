@@ -20,11 +20,10 @@ import akka.pattern.ask
 import akka.routing.RoundRobinPool
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import com.gmail.webserg.hightload.UserLoaderActor.LoadUsers
-import spray.json.DefaultJsonProtocol._
+import com.gmail.webserg.hightload.DataLoaderActor.{LoadUsers, LoadVisitors}
+import com.gmail.webserg.hightload.QueryRouter.{UserQuery, VisitsQuery}
+import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
 
-import scala.Option
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.io.StdIn
 import scala.concurrent.Future
@@ -41,33 +40,49 @@ object WebServer {
     //    val dataLoader : ActorRef = system.actorOf(DataLoaderActor.props, "dataLoader")
 
 
-    val usersLoader: ActorRef = system.actorOf(UserLoaderActor.props, UserLoaderActor.name)
-    usersLoader ! LoadUsers
-    val userFinder: ActorRef = system.actorOf(RoundRobinPool(5).props(UserFinder.props), UserFinder.name)
+    val dataLoader: ActorRef = system.actorOf(DataLoaderActor.props, DataLoaderActor.name)
+    dataLoader ! LoadUsers
+    dataLoader ! LoadVisitors
+    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(5).props(QueryRouter.props), QueryRouter.name)
 
 
     // needed for the future flatMap/onComplete in the end
     implicit val executionContext = system.dispatcher
 
-    implicit val userFormat = jsonFormat6(User)
-    val route =
-    get {
-        pathPrefix("users" / IntNumber) { id =>
-          // there might be no item for a given id
-          implicit val timeout: Timeout = 60 millisecond
-          val maybeItem: Future[Option[Option[User]]] = (userFinder ? id).mapTo[Option[Option[User]]]
 
-          onSuccess(maybeItem) {
-            case Some(None) => print("gdfgdfgdfgd" + "not");complete(StatusCodes.NotFound)
-            case Some(Some(item)) => {
-              print("gdfgdfgdfgd" + item.email)
+    val route = {
+        get {
+          pathPrefix("users" / IntNumber / "visits") { id =>
+            // there might be no item for a given id
+            implicit val timeout: Timeout = 60 millisecond
+            val maybeItem: Future[Option[List[VisitsQueryResult]]] = (queryRouter ? VisitsQuery(id)).mapTo[Option[List[VisitsQueryResult]]]
 
+            onSuccess(maybeItem) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(item) => {
+                                  complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, LocationDataWriter.writeData(item).toString()))
+//                complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "bala"))
+              }
+            }
+          } ~
+          pathPrefix("users" / IntNumber) { id =>
+            // there might be no item for a given id
+            implicit val timeout: Timeout = 60 millisecond
+            val maybeItem: Future[Option[User]] = (queryRouter ? UserQuery(id)).mapTo[Option[User]]
 
-              complete(HttpEntity(ContentTypes.`text/html(UTF-8)`,  userFormat.write(item).toString()))
+            onSuccess(maybeItem) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(item) => {
+                print("gdfgdfgdfgd" + item.email)
+                import MyJsonProtocol._
+
+                complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, userFormat.write(item).toString()))
+              }
             }
           }
-        }
+
       }
+    }
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 
