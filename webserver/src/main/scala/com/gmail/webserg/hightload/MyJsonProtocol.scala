@@ -1,6 +1,7 @@
 package com.gmail.webserg.hightload
 
 import com.gmail.webserg.hightload.LocationDataReader.Location
+import com.gmail.webserg.hightload.LocationQueryActor.LocationAvgQueryResult
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
@@ -30,6 +31,7 @@ object MyJsonProtocol extends DefaultJsonProtocol {
   implicit val visitFormat: RootJsonFormat[Visit] = jsonFormat5(Visit)
 
   implicit val visitQueryResultFormat: RootJsonFormat[VisitsQueryResult] = jsonFormat3(VisitsQueryResult)
+  implicit val locationQueryResultFormat: RootJsonFormat[LocationAvgQueryResult] = jsonFormat1(LocationAvgQueryResult)
 
 }
 
