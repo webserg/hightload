@@ -1,10 +1,10 @@
 package com.gmail.webserg.hightload
 
 import akka.actor.{Actor, ActorLogging, Props}
+import com.gmail.webserg.hightload.DataLoaderActor.LoadData
 import com.gmail.webserg.hightload.LocationDataReader.Location
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
-import com.gmail.webserg.hightload.DataLoaderActor.{LoadData}
 
 class DataLoaderActor extends Actor with ActorLogging {
 
@@ -18,11 +18,17 @@ class DataLoaderActor extends Actor with ActorLogging {
       val visitsMap = visitsList.map(i => i.id -> i).toMap
       val locationMap = locationList.map(i => i.id -> i).toMap
       val visitActor = context.actorOf(Props(
-        new VisitQueryActor(usersList.map(v => v.id -> v).toMap, visitsMap, locationMap, visitsList.groupBy(v => v.user), visitsList.groupBy(v => v.location))),
+        new VisitQueryActor(usersList.map(v => v.id -> v).toMap, visitsMap, locationMap,
+          visitsList.groupBy(v => v.user).map(k => (k._1, k._2.map(i => i.id -> i).toMap)),
+          visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id -> i).toMap))
+        )),
         name = VisitQueryActor.name)
 
       val locationActor = context.actorOf(Props(
-        new LocationQueryActor(usersList.map(v => v.id -> v).toMap, locationList.map(v => v.id -> v).toMap, visitsList.groupBy(v => v.location))),
+        new LocationQueryActor(usersList.map(v => v.id -> v).toMap, locationList.map(v => v.id -> v).toMap,
+          visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id -> i).toMap))
+
+        )),
         name = LocationQueryActor.name)
     }
   }

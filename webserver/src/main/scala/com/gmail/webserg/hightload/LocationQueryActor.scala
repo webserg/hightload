@@ -7,7 +7,7 @@ import com.gmail.webserg.hightload.QueryRouter.{LocationAvgQuery, LocationQuery}
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 
-class LocationQueryActor(val users: Map[Int, User], val locations: Map[Int, Location], val locationVisits: Map[Int, List[Visit]])
+class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]])
   extends Actor with ActorLogging {
 
   override def receive: Receive = {
@@ -15,16 +15,24 @@ class LocationQueryActor(val users: Map[Int, User], val locations: Map[Int, Loca
     case query: LocationQuery =>
       sender ! locations.get(query.id)
 
+    case user: User =>
+      users = users + (user.id -> user)
+
+    case visit: Visit =>
+      locationVisits = locationVisits + (visit.location -> (locationVisits.getOrElse(visit.location, Map()) + (visit.id -> visit)))
+
+    case location: Location => locations + (location.id -> location)
+
     case query: LocationAvgQuery =>
       val locationsOpt = locationVisits.get(query.id)
       if (locationsOpt.isDefined) {
-
+        val locs = locationsOpt.get.values.toList
         implicit class FilterHelper[A](l: List[A]) {
           def ifFilter(cond: Boolean, f: A => Boolean) = {
             if (cond) l.filter(f) else l
           }
         }
-        val filtered = locationsOpt.get
+        val filtered = locs
           .ifFilter(query.param.fromDate.isDefined, _.visited_at >= query.param.fromDate.get)
           .ifFilter(query.param.toDate.isDefined, _.visited_at < query.param.toDate.get)
           .ifFilter(query.param.fromAge.isDefined, v => getAge(users(v.user).birth_date) >= query.param.fromAge.get)
@@ -45,7 +53,9 @@ class LocationQueryActor(val users: Map[Int, User], val locations: Map[Int, Loca
   }
 
   val SECONDS: Int = 24 * 60 * 60
+
   import java.time.LocalDate
+
   val today: LocalDate = LocalDate.now
 
   private def getAge(bd: Long) = {

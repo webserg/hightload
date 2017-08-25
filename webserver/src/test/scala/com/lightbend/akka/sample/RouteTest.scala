@@ -1,13 +1,15 @@
 package com.lightbend.akka.sample
 
 import org.scalatest.{Matchers, WordSpec}
-import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.server._
 import Directives._
 import akka.actor.ActorRef
+import akka.http.scaladsl.model.{HttpMethods, HttpRequest, MediaTypes}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, StatusCodes}
 import akka.routing.RoundRobinPool
-import com.gmail.webserg.hightload.DataLoaderActor.{LoadData}
+import akka.util.ByteString
+import com.gmail.webserg.hightload.DataLoaderActor.LoadData
 import com.gmail.webserg.hightload.{DataLoaderActor, QueryRouter, WebRoute}
 
 class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
@@ -127,6 +129,106 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
+    "/users/809 post" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "birth_date": 616550400, "last_name": "serg", "email": "termilnodsitasen@mail.ru"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/users/809",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+    "/users/new" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "first_name": "\u041b\u044e\u0431\u043e\u0432\u044c", "last_name": "\u0414\u0430\u043d\u043b\u0435\u043d\u043a\u0430\u044f", "gender": "f", "id": 1032, "birth_date": -680054400, "email": "udgivwev@mail.ru"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/users/new",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+    "/users/256/visits" in {
+      // tests:
+      Get("/users/256/visits") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{\"visits\":[{\"mark\":3,\"visited_at\":952703235,\"place\":\"Ручей\"},{\"mark\":1,\"visited_at\":1056622577,\"place\":\"Набережная\"},{\"mark\":3,\"visited_at\":1058884526,\"place\":\"Улица\"},{\"mark\":1,\"visited_at\":1094315689,\"place\":\"Улочка\"},{\"mark\":2,\"visited_at\":1177544827,\"place\":\"Набережная\"},{\"mark\":1,\"visited_at\":1192898482,\"place\":\"Улица\"},{\"mark\":2,\"visited_at\":1246566491,\"place\":\"Площадь\"},{\"mark\":3,\"visited_at\":1279548701,\"place\":\"Набережная\"},{\"mark\":4,\"visited_at\":1301879595,\"place\":\"Пруд\"},{\"mark\":3,\"visited_at\":1319717860,\"place\":\"Лес\"}]}"
+      }
+    }
+
+
+    "/visits/new id null" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |"id": null, "user": 256, "visited_at": 1302197249, "location": 354, "mark": 2
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/visits/new",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+    "/visits/new" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |"id": 10000, "user": 256, "visited_at": 1302197249, "location": 354, "mark": 2
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/visits/new",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+    "/users/256/visits + new" in {
+      // tests:
+      Get("/users/256/visits") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        val res = responseAs[String]
+        println(res)
+        res shouldEqual
+          "{\"visits\":[{\"mark\":3,\"visited_at\":952703235,\"place\":\"Ручей\"},{\"mark\":1,\"visited_at\":1056622577,\"place\":\"Набережная\"},{\"mark\":3,\"visited_at\":1058884526,\"place\":\"Улица\"},{\"mark\":1,\"visited_at\":1094315689,\"place\":\"Улочка\"},{\"mark\":2,\"visited_at\":1177544827,\"place\":\"Набережная\"},{\"mark\":1,\"visited_at\":1192898482,\"place\":\"Улица\"},{\"mark\":2,\"visited_at\":1246566491,\"place\":\"Площадь\"},{\"mark\":3,\"visited_at\":1279548701,\"place\":\"Набережная\"},{\"mark\":4,\"visited_at\":1301879595,\"place\":\"Пруд\"},{\"mark\":2,\"visited_at\":1302197249,\"place\":\"Здание\"},{\"mark\":3,\"visited_at\":1319717860,\"place\":\"Лес\"}]}"
+      }
+    }
+
+
+
     "leave GET requests to other paths unhandled" in {
       // tests:
       Get("/kermit") ~> smallRoute ~> check {
@@ -138,9 +240,25 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       // tests:
       Put() ~> Route.seal(smallRoute) ~> check {
         status shouldEqual StatusCodes.MethodNotAllowed
-        responseAs[String] shouldEqual "HTTP method not allowed, supported methods: GET"
+        responseAs[String] shouldEqual "HTTP method not allowed, supported methods: POST, GET"
       }
     }
+
+    "return user with id = 809" in {
+      // tests:
+      Get("/users/809") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"first_name\":\"Денис\",\"email\":\"termilnodsitasen@mail.ru\",\"id\":809,\"last_name\":\"serg\",\"birth_date\":616550400,\"gender\":\"m\"}"
+      }
+    }
+
+    "return user with id = 1032" in {
+      // tests:
+      Get("/users/1032") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"first_name\":\"Любовь\",\"email\":\"udgivwev@mail.ru\",\"id\":1032,\"last_name\":\"Данленкая\",\"birth_date\":-680054400,\"gender\":\"f\"}"
+      }
+    }
+
+
   }
 
 }

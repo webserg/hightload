@@ -2,27 +2,67 @@ package com.gmail.webserg.hightload
 
 import akka.actor.{Actor, ActorLogging, Props}
 import com.gmail.webserg.hightload.LocationDataReader.Location
-import com.gmail.webserg.hightload.QueryRouter.VisitsQuery
+import com.gmail.webserg.hightload.QueryRouter.{VisitPostQuery, VisitsPostQueryParameter, VisitsQuery}
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
 
-class VisitQueryActor(val users: Map[Int, User],
-                      val visits: Map[Int, Visit],
-                      val location: Map[Int, Location],
-                      val userVisits: Map[Int, List[Visit]],
-                      val locationVisits: Map[Int, List[Visit]])
+class VisitQueryActor(var users: Map[Int, User],
+                      var visits: Map[Int, Visit],
+                      var locations: Map[Int, Location],
+                      var userVisits: Map[Int, Map[Int, Visit]],
+                      var locationVisits: Map[Int, Map[Int, Visit]])
   extends Actor with ActorLogging {
+
+  def validateNewPostVisitQuery(q: VisitsPostQueryParameter): Boolean = {
+    q.id.isDefined && q.user.isDefined && q.location.isDefined && q.visited_at.isDefined && q.mark.isDefined &&
+      visits.get(q.id.get).isDefined && users.get(q.user.get).isDefined && users.get(q.location.get).isDefined
+
+  }
 
   override def receive: Receive = {
     case id: Int =>
       sender ! visits.get(id)
 
+    case user: User =>
+      users = users + (user.id -> user)
+
+    case location: Location =>
+      locations = locations + (location.id -> location)
+
+    case q: VisitPostQuery =>
+      val visit = visits.get(q.id)
+      if (visit.isDefined) {
+        val oldVisit = visit.get
+        val nlocation = q.param.location.getOrElse(oldVisit.location)
+        val nuser = q.param.user.getOrElse(oldVisit.user)
+        val nmark = q.param.mark.getOrElse(oldVisit.mark)
+        val nvisit_at = q.param.visited_at.getOrElse(oldVisit.visited_at)
+        val newVisit = Visit(oldVisit.id, nlocation, nuser, nvisit_at, nmark)
+        visits = visits + (q.id -> newVisit)
+        userVisits.getOrElse(nuser, Map()) + (newVisit.id -> newVisit)
+        locationVisits.getOrElse(newVisit.location, Map()) + (newVisit.id -> newVisit)
+        sender() ! newVisit
+
+      } else sender() ! None
+
+    case q: VisitsPostQueryParameter =>
+      if (validateNewPostVisitQuery(q)) {
+        val nid = q.id.get
+        val newVisit = Visit(nid, q.location.get, q.user.get, q.visited_at.get, q.mark.get)
+        visits = visits + (nid -> newVisit)
+        userVisits = userVisits + (newVisit.user -> (userVisits.getOrElse(newVisit.user, Map()) + (newVisit.id -> newVisit)))
+        locationVisits.getOrElse(newVisit.location, Map()) + (newVisit.id -> newVisit)
+        sender() ! Some(newVisit)
+
+      } else sender() ! None
+
+
     case queryUserVisits: VisitsQuery =>
 
       val userVisitsRes = userVisits.get(queryUserVisits.id)
       if (userVisitsRes.isDefined) {
-        val allRes: List[Visit] = userVisitsRes.get
+        val allRes: List[Visit] = userVisitsRes.get.values.toList
         implicit class FilterHelper[A](l: List[A]) {
           def ifFilter(cond: Boolean, f: A => Boolean) = {
             if (cond) l.filter(f) else l
@@ -32,11 +72,11 @@ class VisitQueryActor(val users: Map[Int, User],
         val filtered = allRes
           .ifFilter(queryUserVisits.param.fromDate.isDefined, _.visited_at >= queryUserVisits.param.fromDate.get)
           .ifFilter(queryUserVisits.param.toDate.isDefined, _.visited_at < queryUserVisits.param.toDate.get)
-          .ifFilter(queryUserVisits.param.country.isDefined, v => location(v.location).country.equalsIgnoreCase(queryUserVisits.param.country.get))
-          .ifFilter(queryUserVisits.param.toDistance.isDefined, v => location(v.location).distance < queryUserVisits.param.toDistance.get)
+          .ifFilter(queryUserVisits.param.country.isDefined, v => locations(v.location).country.equalsIgnoreCase(queryUserVisits.param.country.get))
+          .ifFilter(queryUserVisits.param.toDistance.isDefined, v => locations(v.location).distance < queryUserVisits.param.toDistance.get)
 
         val sortedRes: List[VisitsQueryResult] = filtered.sortBy(v => v.visited_at).map(v => {
-          VisitsQueryResult(v.mark, v.visited_at, location(v.location).place)
+          VisitsQueryResult(v.mark, v.visited_at, locations(v.location).place)
         })
         sender ! Some(sortedRes)
       } else if (users.get(queryUserVisits.id).isDefined) {

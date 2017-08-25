@@ -27,4 +27,15 @@ object DateTest extends App{
 
   "GET\t/users/146/visits?toDistance=18&toDate=1540771200&fromDate=1386720000\t200\t{\"visits\": []}".split("\t").foreach(println)
 
+  case class Plane(name:String)
+
+  var jetSet = Set(Plane("Boeing"), Plane("Airbus"))
+  jetSet += Plane("Lear")
+  jetSet += Plane("AirBus")
+  println(jetSet.contains(Plane("Cessna")))
+  println(None.nonEmpty)
+  println(None.isDefined)
+  println(Some("fsdsd").nonEmpty)
+
+
 }
