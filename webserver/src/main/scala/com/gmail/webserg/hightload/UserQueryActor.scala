@@ -6,10 +6,21 @@ import com.gmail.webserg.hightload.UserDataReader.User
 
 class UserQueryActor(var users: Map[Int, User]) extends Actor with ActorLogging {
 
+  override def preStart() = {
+    log.debug("Starting user")
+  }
+  override def preRestart(reason: Throwable, message: Option[Any]) {
+    log.error(reason, "Restarting due to [{}] when processing [{}]",
+      reason.getMessage, message.getOrElse(""))
+  }
+
   override def receive: Receive = {
-    case id: Int => sender ! users.get(id)
+    case id: Int =>
+      log.debug(id + "get")
+      sender ! users.get(id)
 
     case q: UserPostQuery =>
+      log.debug(q.id + " post ")
       val user = users.get(q.id)
       if (user.isDefined) {
         val oldUser = user.get

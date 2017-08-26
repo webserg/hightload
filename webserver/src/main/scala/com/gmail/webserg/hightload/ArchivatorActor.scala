@@ -9,8 +9,8 @@ object ArchivatorActor {
 
   val dirName = "/tmp/hightLoad/data/"
   val archivedirName = "/tmp/data/"
-  //  val dirName = "C:\\git\\hightLoad\\webserver\\resources\\data\\"
-  //  val dirName = "C:\\git\\hightLoad\\"
+//    val dirName = "C:\\git\\hightLoad\\data\\"
+//    val archivedirName = "C:\\git\\hightLoad\\"
 
   val name = "dataArchivator"
 

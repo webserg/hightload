@@ -23,7 +23,7 @@ object WebRoute {
       pathPrefix("users" / IntNumber) { id =>
         import MyJsonProtocol._
         import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-
+        println("webroute users")
         entity(as[UserPostQueryParameter]) {
           queryParam =>
             implicit val timeout: Timeout = 60 millisecond
@@ -138,9 +138,9 @@ object WebRoute {
         }
       } ~
       pathPrefix("users" / IntNumber) { id =>
-
+        println("webroute users get")
         // there might be no item for a given id
-        implicit val timeout: Timeout = 60 millisecond
+        implicit val timeout: Timeout = 120 millisecond
         val maybeItem: Future[Option[User]] = (queryRouter ? UserQuery(id)).mapTo[Option[User]]
 
         onSuccess(maybeItem) {

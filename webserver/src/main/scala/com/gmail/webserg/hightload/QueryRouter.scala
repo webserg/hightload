@@ -71,6 +71,7 @@ class QueryRouter extends Actor with ActorLogging {
 
   override def receive: Receive = {
     case q: UserQuery =>
+      log.debug("route message user")
       (context.actorSelection("/user/" + DataLoaderActor.name + "/" + UserQueryActor.name) ? q.id) to sender
     case q: UserPostQuery =>
       (context.actorSelection("/user/" + DataLoaderActor.name + "/" + UserQueryActor.name) ? q) to sender

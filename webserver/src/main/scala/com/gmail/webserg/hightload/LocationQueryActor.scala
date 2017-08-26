@@ -13,6 +13,7 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
   override def receive: Receive = {
 
     case query: LocationQuery =>
+      log.debug(query.id + " location ")
       sender ! locations.get(query.id)
 
     case user: User =>
