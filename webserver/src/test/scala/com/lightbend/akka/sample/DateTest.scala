@@ -38,4 +38,9 @@ object DateTest extends App{
   println(Some("fsdsd").nonEmpty)
 
 
+  def llist() = List(1,2,3)
+
+  val res = for(l <- List(1,2,3)) yield llist()
+  println(res.flatten)
 }
+

@@ -15,13 +15,10 @@ object WebServer {
     implicit val materializer = ActorMaterializer()
 
     val dataArchivator: ActorRef = system.actorOf(ArchivatorActor.props, ArchivatorActor.name)
-    //    dataArchivator ! ArchivatorActor.StartArchivator
-    //    val dataLoader : ActorRef = system.actorOf(DataLoaderActor.props, "dataLoader")
-
-
+    dataArchivator ! ArchivatorActor.StartArchivator
     val dataLoader: ActorRef = system.actorOf(DataLoaderActor.props, DataLoaderActor.name)
-    dataLoader ! LoadData
-    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(5).props(QueryRouter.props), QueryRouter.name)
+
+    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(15).props(QueryRouter.props), QueryRouter.name)
 
 
     // needed for the future flatMap/onComplete in the end
@@ -29,9 +26,9 @@ object WebServer {
 
     val route = WebRoute.createRoute(queryRouter)
 
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "localhost", 80)
 
-    println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+    println(s"Server online at http://localhost:80/\nPress RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
     bindingFuture
       .flatMap(_.unbind()) // trigger unbinding from the port

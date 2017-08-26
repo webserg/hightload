@@ -3,14 +3,19 @@ package com.gmail.webserg.hightload
 import java.nio.file.Paths
 
 import akka.actor.{Actor, Props}
-import com.gmail.webserg.hightload.ArchivatorActor.StartArchivator
+import com.gmail.webserg.hightload.DataLoaderActor.LoadData
 
 object ArchivatorActor {
 
+  val dirName = "/tmp/hightLoad/data/"
+  val archivedirName = "/tmp/data/"
+  //  val dirName = "C:\\git\\hightLoad\\webserver\\resources\\data\\"
+  //  val dirName = "C:\\git\\hightLoad\\"
+
   val name = "dataArchivator"
 
-  val in = "C:\\git\\hightLoad\\webserver\\resources\\data.zip"
-  val out = "C:\\git\\hightLoad\\webserver\\resources\\data"
+  val in = archivedirName + "data.zip"
+  val out = dirName
 
   case object StartArchivator
 
@@ -26,7 +31,7 @@ class ArchivatorActor extends Actor {
   def receive = {
     case StartArchivator => {
       Archivator.unzip(in, Paths.get(out))
-      sender ! DataArchived
+      context.actorSelection("/user/" + DataLoaderActor.name) ! LoadData
     }
   }
 

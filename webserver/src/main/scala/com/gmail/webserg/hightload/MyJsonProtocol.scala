@@ -1,5 +1,7 @@
 package com.gmail.webserg.hightload
 
+import java.io.File
+
 import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import com.gmail.webserg.hightload.LocationDataReader.Location
 import com.gmail.webserg.hightload.LocationQueryActor.LocationAvgQueryResult
@@ -50,7 +52,7 @@ object UserDataReader {
 //      User(id, nfirst_name, nlast_name, nbirth_date, ngender, nemail)
   }
 
-  def readData(in: String): UserList[User] = {
+  def readData(in: File): UserList[User] = {
     import MyJsonProtocol._
     val input = scala.io.Source.fromFile(in)("UTF-8").mkString.parseJson
     input.convertTo[UserList[User]]
@@ -62,7 +64,7 @@ object LocationDataReader {
 
   final case class Location(id: Int, place: String, country: String, city: String, distance: Int)
 
-  def readData(in: String): LocationsList[Location] = {
+  def readData(in: File): LocationsList[Location] = {
     import MyJsonProtocol._
     val input = scala.io.Source.fromFile(in)("UTF-8").mkString.parseJson
     input.convertTo[LocationsList[Location]]
@@ -84,7 +86,7 @@ object VisitDataReader {
 
   final case class Visit(id: Int, location: Int, user: Int, visited_at: Long, mark: Int)
 
-  def readData(in: String): VisitsList[Visit] = {
+  def readData(in: File): VisitsList[Visit] = {
     import MyJsonProtocol._
     val input = scala.io.Source.fromFile(in)("UTF-8").mkString.parseJson
     input.convertTo[VisitsList[Visit]]
