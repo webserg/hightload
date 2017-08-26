@@ -7,6 +7,7 @@ import com.gmail.webserg.hightload.DataLoaderActor.LoadData
 
 object ArchivatorActor {
 
+
   val dirName = "/tmp/hightLoad/data/"
   val archivedirName = "/tmp/data/"
 //    val dirName = "C:\\git\\hightLoad\\data\\"
