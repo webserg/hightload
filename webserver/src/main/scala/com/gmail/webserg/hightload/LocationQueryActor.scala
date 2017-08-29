@@ -1,19 +1,35 @@
 package com.gmail.webserg.hightload
 
+import java.time.LocalDate
+
 import akka.actor.{Actor, ActorLogging, Props}
 import com.gmail.webserg.hightload.LocationDataReader.Location
 import com.gmail.webserg.hightload.LocationQueryActor.LocationAvgQueryResult
-import com.gmail.webserg.hightload.QueryRouter.{LocationAvgQuery, LocationQuery}
+import com.gmail.webserg.hightload.QueryRouter._
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 
 class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]])
   extends Actor with ActorLogging {
 
+  override def preStart() = {
+    log.debug("Starting QueryRouter" + self.path)
+  }
+
+
+  implicit class FilterHelper[A](l: List[A]) {
+    def ifFilter(cond: Boolean, f: A => Boolean) = {
+      if (cond) l.filter(f) else l
+    }
+  }
+
+  def validateNewPostLocationQuery(q: LocationPostQueryParameter): Boolean = {
+    q.id.isDefined && q.city.isDefined && q.country.isDefined && q.distance.isDefined && q.place.isDefined
+  }
+
   override def receive: Receive = {
 
     case query: LocationQuery =>
-      log.debug(query.id + " location ")
       sender ! locations.get(query.id)
 
     case user: User =>
@@ -28,11 +44,6 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
       val locationsOpt = locationVisits.get(query.id)
       if (locationsOpt.isDefined) {
         val locs = locationsOpt.get.values.toList
-        implicit class FilterHelper[A](l: List[A]) {
-          def ifFilter(cond: Boolean, f: A => Boolean) = {
-            if (cond) l.filter(f) else l
-          }
-        }
         val filtered = locs
           .ifFilter(query.param.fromDate.isDefined, _.visited_at >= query.param.fromDate.get)
           .ifFilter(query.param.toDate.isDefined, _.visited_at < query.param.toDate.get)
@@ -51,11 +62,43 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
 
         sender ! None
       }
+
+    case q: LocationPostQueryParameter =>
+      if (validateNewPostLocationQuery(q)) {
+        val loc = locations.get(q.id.get)
+        if (loc.isEmpty) {
+          val nid = q.id.get
+          val ncountry = q.country.get
+          val ncity = q.city.get
+          val nplace = q.place.get
+          val ndist = q.distance.get
+          val newLoc = Location(nid, nplace, ncountry, ncity, ndist)
+          locations = locations + (nid -> newLoc)
+          sender() ! Some(Location)
+        }
+      }
+      else sender() ! None
+
+    case q: LocationPostQuery =>
+      val loc = locations.get(q.id)
+      if (loc.isDefined && q.param.id.isEmpty) {
+        val oldLoc = loc.get
+        val nid = q.id
+        val ncountry = q.param.country.getOrElse(oldLoc.country)
+        val ncity = q.param.city.getOrElse(oldLoc.city)
+        val nplace = q.param.place.getOrElse(oldLoc.place)
+        val ndist = q.param.distance.getOrElse(oldLoc.distance)
+        val newLoc = Location(nid, nplace, ncountry, ncity, ndist)
+        locations = locations + (nid -> newLoc)
+        sender() ! Some(Location)
+      }
+      else sender() ! None
+
+
   }
 
-  val SECONDS: Int = 24 * 60 * 60
 
-  import java.time.LocalDate
+  val SECONDS: Int = 24 * 60 * 60
 
   val today: LocalDate = LocalDate.now
 

@@ -2,10 +2,13 @@ package com.gmail.webserg.hightload
 
 import akka.actor.{Actor, ActorLogging, Props}
 import com.gmail.webserg.hightload.LocationDataReader.Location
-import com.gmail.webserg.hightload.QueryRouter.{VisitPostQuery, VisitsPostQueryParameter, VisitsQuery}
+import com.gmail.webserg.hightload.QueryRouter.{UserVisitsQuery, VisitPostQuery, VisitsPostQueryParameter}
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
+
+import scala.collection.parallel.ParIterable
+import scala.collection.parallel.immutable.ParSeq
 
 class VisitQueryActor(var users: Map[Int, User],
                       var visits: Map[Int, Visit],
@@ -14,11 +17,23 @@ class VisitQueryActor(var users: Map[Int, User],
                       var locationVisits: Map[Int, Map[Int, Visit]])
   extends Actor with ActorLogging {
 
+  override def preStart() = {
+    log.debug("Starting QueryRouter" + self.path)
+  }
+
+
   def validateNewPostVisitQuery(q: VisitsPostQueryParameter): Boolean = {
     q.id.isDefined && q.user.isDefined && q.location.isDefined && q.visited_at.isDefined && q.mark.isDefined &&
-      visits.get(q.id.get).isDefined && users.get(q.user.get).isDefined && users.get(q.location.get).isDefined
+      users.get(q.user.get).isDefined && locations.get(q.location.get).isDefined
 
   }
+
+  implicit class FilterHelper[A](l: ParIterable[A]) {
+    def ifFilter(cond: Boolean, f: A => Boolean) = {
+      if (cond) l.filter(f) else l
+    }
+  }
+
 
   override def receive: Receive = {
     case id: Int =>
@@ -42,7 +57,7 @@ class VisitQueryActor(var users: Map[Int, User],
         visits = visits + (q.id -> newVisit)
         userVisits.getOrElse(nuser, Map()) + (newVisit.id -> newVisit)
         locationVisits.getOrElse(newVisit.location, Map()) + (newVisit.id -> newVisit)
-        sender() ! newVisit
+        sender() ! Some(newVisit)
 
       } else sender() ! None
 
@@ -58,26 +73,20 @@ class VisitQueryActor(var users: Map[Int, User],
       } else sender() ! None
 
 
-    case queryUserVisits: VisitsQuery =>
+    case queryUserVisits: UserVisitsQuery =>
 
       val userVisitsRes = userVisits.get(queryUserVisits.id)
       if (userVisitsRes.isDefined) {
-        val allRes: List[Visit] = userVisitsRes.get.values.toList
-        implicit class FilterHelper[A](l: List[A]) {
-          def ifFilter(cond: Boolean, f: A => Boolean) = {
-            if (cond) l.filter(f) else l
-          }
-        }
 
-        val filtered = allRes
+        val filtered = userVisitsRes.get.values.par
           .ifFilter(queryUserVisits.param.fromDate.isDefined, _.visited_at >= queryUserVisits.param.fromDate.get)
           .ifFilter(queryUserVisits.param.toDate.isDefined, _.visited_at < queryUserVisits.param.toDate.get)
           .ifFilter(queryUserVisits.param.country.isDefined, v => locations(v.location).country.equalsIgnoreCase(queryUserVisits.param.country.get))
           .ifFilter(queryUserVisits.param.toDistance.isDefined, v => locations(v.location).distance < queryUserVisits.param.toDistance.get)
 
-        val sortedRes: List[VisitsQueryResult] = filtered.sortBy(v => v.visited_at).map(v => {
+        val sortedRes: List[VisitsQueryResult] = filtered.toList.sortBy(v => v.visited_at).map(v => {
           VisitsQueryResult(v.mark, v.visited_at, locations(v.location).place)
-        })
+        }).toList
         sender ! Some(sortedRes)
       } else if (users.get(queryUserVisits.id).isDefined) {
         sender ! Some(List[Visit]())

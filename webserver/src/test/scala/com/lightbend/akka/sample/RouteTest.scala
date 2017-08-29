@@ -1,24 +1,27 @@
 package com.lightbend.akka.sample
 
-import org.scalatest.{Matchers, WordSpec}
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.actor.{ActorRef, Props}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.server._
-import Directives._
-import akka.actor.ActorRef
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, MediaTypes}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, StatusCodes}
+import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.routing.RoundRobinPool
-import akka.util.ByteString
-import com.gmail.webserg.hightload.DataLoaderActor.LoadData
-import com.gmail.webserg.hightload.{DataLoaderActor, QueryRouter, WebRoute}
+import akka.util.{ByteString, Timeout}
+import com.gmail.webserg.hightload.WebServer.WebServerProps
+import com.gmail.webserg.hightload.{QueryRouter, WebRoute, WebServer}
+import org.scalatest.{Matchers, WordSpec}
+import scala.concurrent.duration._
+
 
 class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
+  val webserverProps: WebServerProps = WebServerProps("C:\\git\\hightLoad\\", "C:\\git\\hightLoad\\webserver\\resources\\data\\data\\data\\")
 
-  val dataLoader: ActorRef = system.actorOf(DataLoaderActor.props, DataLoaderActor.name)
-  dataLoader ! LoadData
-  val queryRouter: ActorRef = system.actorOf(RoundRobinPool(5).props(QueryRouter.props), QueryRouter.name)
+  val addr = WebServer.loadData(webserverProps, system)
+  val queryRouter: ActorRef = system.actorOf(RoundRobinPool(25).props(Props(new QueryRouter(addr))), QueryRouter.name)
 
   val smallRoute: Route = WebRoute.createRoute(queryRouter)
+
+  implicit val timeout: Timeout = 3000 millisecond
+
 
   "The service" should {
 
@@ -169,6 +172,27 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
+    "/users/809 post null" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "birth_date": 616550400, "last_name": null, "email": "termilnodsitasen@mail.ru"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/users/809",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+
     "/users/256/visits" in {
       // tests:
       Get("/users/256/visits") ~> Route.seal(smallRoute) ~> check {
@@ -228,7 +252,6 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     }
 
 
-
     "leave GET requests to other paths unhandled" in {
       // tests:
       Get("/kermit") ~> smallRoute ~> check {
@@ -255,6 +278,95 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       // tests:
       Get("/users/1032") ~> smallRoute ~> check {
         responseAs[String] shouldEqual "{\"first_name\":\"Любовь\",\"email\":\"udgivwev@mail.ru\",\"id\":1032,\"last_name\":\"Данленкая\",\"birth_date\":-680054400,\"gender\":\"f\"}"
+      }
+    }
+
+     "return location with id = 310" in {
+      // tests:
+      Get("/locations/310") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Норвегия\",\"id\":310,\"place\":\"Склон\",\"distance\":17}"
+      }
+    }
+
+    "/locations/310 post" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "distance": 46,
+           |  "place": "Фонтан",
+           |  "country": "Белоруссия"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/locations/310",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+    "return location with id = 310 changed" in {
+      // tests:
+      Get("/locations/310") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Белоруссия\",\"id\":310,\"place\":\"Фонтан\",\"distance\":46}"
+      }
+    }
+
+    "/locations/27 post" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "city": null,
+           |  "place": "Здание"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/locations/27",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+    "/visits/new 100616" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "id": 100616,
+           |  "user": 1,
+           |  "visited_at": 1095915810,
+           |  "location": 25,
+           |  "mark": 3
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/visits/new",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+    "return visit with id = 100616" in {
+      // tests:
+      Get("/users/1") ~> smallRoute ~> check {
+        val res = responseAs[String]
+        println(res)
+        res shouldEqual "{\"first_name\":\"Инна\",\"email\":\"iwgeodwa@list.me\",\"id\":1,\"last_name\":\"Терыкатева\",\"birth_date\":-712108800,\"gender\":\"f\"}"
       }
     }
 

@@ -42,5 +42,9 @@ object DateTest extends App{
 
   val res = for(l <- List(1,2,3)) yield llist()
   println(res.flatten)
+
+  val test = Option("null")
+  println(test.isDefined)
+  println(test)
 }
 
