@@ -11,10 +11,11 @@ import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.WebServer.ActorAddresses
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object QueryRouter {
-  val name = "users"
+  val name = "queryRouter"
 
   case class UserQuery(id: Int)
 
@@ -105,7 +106,7 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
       (addr.locationActor ? q) to sender
 
     case q: LocationQuery =>
-      (addr.locationActor ? q) to sender
+      (addr.locationGetActor ? q) to sender
 
     case q: LocationPostQueryParameter =>
       (addr.locationActor ? q) to sender
@@ -115,6 +116,6 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
 
     case q: Location =>
       addr.visitActor ! Broadcast(q)
-
+      addr.locationGetActor ! q
   }
 }

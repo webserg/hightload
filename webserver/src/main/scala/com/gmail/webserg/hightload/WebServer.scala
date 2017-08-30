@@ -23,7 +23,7 @@ object WebServer {
     unZip(webServerProps)
     val actorAddresses = loadData(webServerProps, system)
 
-    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(55).props(Props(new QueryRouter(actorAddresses))), QueryRouter.name)
+    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(100).props(Props(new QueryRouter(actorAddresses))), QueryRouter.name)
 
 
     // needed for the future flatMap/onComplete in the end
@@ -52,7 +52,7 @@ object WebServer {
     Archivator.unzip(in, Paths.get(out))
   }
 
-  case class ActorAddresses(userActor: ActorRef, visitActor: ActorRef, locationActor: ActorRef)
+  case class ActorAddresses(userActor: ActorRef, visitActor: ActorRef, locationActor: ActorRef,locationGetActor: ActorRef)
 
   def loadData(webServerProps: WebServerProps, system: ActorSystem): ActorAddresses = {
     val dataDir = webServerProps.dataDirName
@@ -73,8 +73,8 @@ object WebServer {
 
     val visitActor = system.actorOf(RoundRobinPool(2).props(Props(
       new VisitQueryActor(usersList.map(v => v.id -> v).toMap, visitsMap, locationMap,
-        visitsList.groupBy(v => v.user).map(k => (k._1, k._2.map(i => i.id -> i).toMap)),
-        visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id -> i).toMap))
+        visitsList.groupBy(v => v.user).map(k => (k._1, k._2.map(i => i.id).toList)),
+        visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id).toList))
       ))),
       name = VisitQueryActor.name)
 
@@ -85,7 +85,11 @@ object WebServer {
       )),
       name = LocationQueryActor.name)
 
-    ActorAddresses(userActor = userActor, visitActor = visitActor, locationActor)
+     val locationGetActor = system.actorOf(Props(
+      new LocationGetActor(locationList.map(v => v.id -> v).toMap))  ,
+      name = LocationGetActor.name)
+
+    ActorAddresses(userActor = userActor, visitActor = visitActor, locationActor ,locationGetActor)
   }
 
 

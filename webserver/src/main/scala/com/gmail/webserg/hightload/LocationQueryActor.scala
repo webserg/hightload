@@ -2,18 +2,19 @@ package com.gmail.webserg.hightload
 
 import java.time.LocalDate
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import com.gmail.webserg.hightload.LocationDataReader.Location
 import com.gmail.webserg.hightload.LocationQueryActor.LocationAvgQueryResult
 import com.gmail.webserg.hightload.QueryRouter._
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 
-class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]])
+class LocationQueryActor(
+                         var users: Map[Int, User], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]])
   extends Actor with ActorLogging {
 
   override def preStart() = {
-    log.debug("Starting QueryRouter" + self.path)
+    log.debug("Starting LocationActor" + self.path)
   }
 
 
@@ -67,6 +68,7 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
       if (validateNewPostLocationQuery(q)) {
         val loc = locations.get(q.id.get)
         if (loc.isEmpty) {
+          sender ! Some("{}")
           val nid = q.id.get
           val ncountry = q.country.get
           val ncity = q.city.get
@@ -74,7 +76,7 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
           val ndist = q.distance.get
           val newLoc = Location(nid, nplace, ncountry, ncity, ndist)
           locations = locations + (nid -> newLoc)
-          sender() ! Some(Location)
+          context.actorSelection("/user/" + QueryRouter.name) ! newLoc
         }
       }
       else sender() ! None
@@ -82,6 +84,7 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
     case q: LocationPostQuery =>
       val loc = locations.get(q.id)
       if (loc.isDefined && q.param.id.isEmpty) {
+        sender ! Some("{}")
         val oldLoc = loc.get
         val nid = q.id
         val ncountry = q.param.country.getOrElse(oldLoc.country)
@@ -90,7 +93,7 @@ class LocationQueryActor(var users: Map[Int, User], var locations: Map[Int, Loca
         val ndist = q.param.distance.getOrElse(oldLoc.distance)
         val newLoc = Location(nid, nplace, ncountry, ncity, ndist)
         locations = locations + (nid -> newLoc)
-        sender() ! Some(Location)
+        context.actorSelection("/user/" + QueryRouter.name) ! newLoc
       }
       else sender() ! None
 

@@ -49,20 +49,27 @@ object WebRoute {
     } ~
       post {
         pathPrefix("users" / "new") {
-          entity(as[UserPostQueryParameter]) {
-            queryParam =>
-              val maybeItem: Future[Option[User]] = (queryRouter ? queryParam).mapTo[Option[User]]
+          entity(as[String]) {
+            q =>
+              if (q.contains("null")) {
+                complete(StatusCodes.BadRequest, "{}")
+              } else {
 
-              onSuccess(maybeItem) {
-                case None => complete(StatusCodes.NotFound)
-                case Some(item) => {
-                  queryRouter ! User
-                  complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                entity(as[UserPostQueryParameter]) {
+                  queryParam =>
+                    val maybeItem: Future[Option[String]] = (queryRouter ? queryParam).mapTo[Option[String]]
+
+                    onSuccess(maybeItem) {
+                      case None => complete(StatusCodes.NotFound)
+                      case Some(item) => {
+                        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                      }
+                    }
                 }
               }
           }
         }
-      } ~
+      }~
       post {
         pathPrefix("visits" / IntNumber) { id =>
           entity(as[String]) {
@@ -96,12 +103,11 @@ object WebRoute {
 
                 entity(as[VisitsPostQueryParameter]) {
                   queryParam =>
-                    val maybeItem: Future[Option[Visit]] = (queryRouter ? queryParam).mapTo[Option[Visit]]
+                    val maybeItem: Future[Option[String]] = (queryRouter ? queryParam).mapTo[Option[String]]
 
                     onSuccess(maybeItem) {
-                      case None => complete(StatusCodes.BadRequest)
+                      case None => complete(StatusCodes.NotFound)
                       case Some(item) => {
-                        queryRouter ! Visit
                         complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
                       }
                     }
@@ -120,12 +126,11 @@ object WebRoute {
 
                 entity(as[LocationPostQueryParameter]) {
                   queryParam =>
-                    val maybeItem: Future[Option[Location]] = (queryRouter ? LocationPostQuery(id, queryParam)).mapTo[Option[Location]]
+                    val maybeItem: Future[Option[String]] = (queryRouter ? LocationPostQuery(id, queryParam)).mapTo[Option[String]]
 
                     onSuccess(maybeItem) {
-                      case None => complete(StatusCodes.BadRequest)
+                      case None => complete(StatusCodes.NotFound)
                       case Some(item) => {
-                        queryRouter ! Location
                         complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
                       }
                     }
@@ -136,21 +141,27 @@ object WebRoute {
       } ~
       post {
         pathPrefix("locations" / "new") {
+          entity(as[String]) {
+            q =>
+              if (q.contains("null")) {
+                complete(StatusCodes.BadRequest, "{}")
+              } else {
 
-          entity(as[LocationPostQueryParameter]) {
-            queryParam =>
-              val maybeItem: Future[Option[Location]] = (queryRouter ? queryParam).mapTo[Option[Location]]
+                entity(as[LocationPostQueryParameter]) {
+                  queryParam =>
+                    val maybeItem: Future[Option[String]] = (queryRouter ? queryParam).mapTo[Option[String]]
 
-              onSuccess(maybeItem) {
-                case None => complete(StatusCodes.BadRequest)
-                case Some(item) => {
-                  queryRouter ! Location
-                  complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                    onSuccess(maybeItem) {
+                      case None => complete(StatusCodes.BadRequest)
+                      case Some(item) => {
+                        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                      }
+                    }
                 }
               }
           }
         }
-      } ~
+      }~
       get {
         pathPrefix("users" / IntNumber / "visits") { id =>
           parameters('fromDate.as[Long].?, 'toDate.as[Long].?, 'country.as[String].?, 'toDistance.as[Int].?).as(UserVisitsQueryParameter) {

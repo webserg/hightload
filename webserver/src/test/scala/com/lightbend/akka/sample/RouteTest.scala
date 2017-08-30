@@ -225,7 +225,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       val jsonRequest = ByteString(
         s"""
            |{
-           |"id": 10000, "user": 256, "visited_at": 1302197249, "location": 354, "mark": 2
+           |"id": 100000, "user": 2, "visited_at": 1302197249, "location": 354, "mark": 2
            |}
         """.stripMargin)
 
@@ -240,14 +240,21 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
-    "/users/256/visits + new" in {
+    "return visit with id = 100000" in {
       // tests:
-      Get("/users/256/visits") ~> Route.seal(smallRoute) ~> check {
+      Get("/visits/100000") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"location\":354,\"visited_at\":1302197249,\"id\":100000,\"mark\":2,\"user\":2}"
+      }
+    }
+
+
+    "/users/2/visits + new" in {
+      // tests:
+      Get("/users/2/visits") ~> Route.seal(smallRoute) ~> check {
         status shouldEqual StatusCodes.OK
         val res = responseAs[String]
         println(res)
-        res shouldEqual
-          "{\"visits\":[{\"mark\":3,\"visited_at\":952703235,\"place\":\"Ручей\"},{\"mark\":1,\"visited_at\":1056622577,\"place\":\"Набережная\"},{\"mark\":3,\"visited_at\":1058884526,\"place\":\"Улица\"},{\"mark\":1,\"visited_at\":1094315689,\"place\":\"Улочка\"},{\"mark\":2,\"visited_at\":1177544827,\"place\":\"Набережная\"},{\"mark\":1,\"visited_at\":1192898482,\"place\":\"Улица\"},{\"mark\":2,\"visited_at\":1246566491,\"place\":\"Площадь\"},{\"mark\":3,\"visited_at\":1279548701,\"place\":\"Набережная\"},{\"mark\":4,\"visited_at\":1301879595,\"place\":\"Пруд\"},{\"mark\":2,\"visited_at\":1302197249,\"place\":\"Здание\"},{\"mark\":3,\"visited_at\":1319717860,\"place\":\"Лес\"}]}"
+        res.contains("1302197249") shouldBe(true)
       }
     }
 
@@ -310,12 +317,29 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
-    "return location with id = 310 changed" in {
+    "/locations/310 post 2" in {
       // tests:
-      Get("/locations/310") ~> smallRoute ~> check {
-        responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Белоруссия\",\"id\":310,\"place\":\"Фонтан\",\"distance\":46}"
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "distance": 46,
+           |  "place": "Фонтан",
+           |  "country": "Белоруссия"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/locations/310",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
       }
     }
+
+
 
     "/locations/27 post" in {
       // tests:
@@ -337,6 +361,14 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         responseAs[String] shouldEqual "{}"
       }
     }
+
+    "return location with id = 310 changed" in {
+      // tests:
+      Get("/locations/310") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Белоруссия\",\"id\":310,\"place\":\"Фонтан\",\"distance\":46}"
+      }
+    }
+
 
     "/visits/new 100616" in {
       // tests:

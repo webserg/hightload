@@ -14,6 +14,7 @@ class UserQueryActor(var users: Map[Int, User]) extends Actor with ActorLogging 
     case q: UserPostQuery =>
       val user = users.get(q.id)
       if (user.isDefined) {
+        sender() ! Some("{}")
         val oldUser = user.get
         val nfirst_name = q.param.first_name.getOrElse(oldUser.first_name)
         val nlast_name = q.param.last_name.getOrElse(oldUser.last_name)
@@ -22,7 +23,7 @@ class UserQueryActor(var users: Map[Int, User]) extends Actor with ActorLogging 
         val nemail = q.param.email.getOrElse(oldUser.email)
         val newUser = User(oldUser.id, nfirst_name, nlast_name, nbirth_date, ngender, nemail)
         users = users + (q.id -> newUser)
-        sender() ! Some(User)
+        context.actorSelection("/user/" + QueryRouter.name) ! newUser
 
       } else sender() ! None
 
@@ -30,6 +31,7 @@ class UserQueryActor(var users: Map[Int, User]) extends Actor with ActorLogging 
       if (validateNewPostUserQuery(q)) {
         val user = users.get(q.id.get)
         if (user.isEmpty) {
+          sender() ! Some("{}")
           val nid = q.id.get
           val nfirst_name = q.first_name.get
           val nlast_name = q.last_name.get
@@ -38,7 +40,7 @@ class UserQueryActor(var users: Map[Int, User]) extends Actor with ActorLogging 
           val nemail = q.email.get
           val newUser = User(nid, nfirst_name, nlast_name, nbirth_date, ngender, nemail)
           users = users + (nid -> newUser)
-          sender() ! Some(User)
+          context.actorSelection("/user/" + QueryRouter.name) ! newUser
 
         } else sender() ! None
 
