@@ -260,7 +260,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       val jsonRequest = ByteString(
         s"""
            |{
-           |"id": 100000, "user": 2, "visited_at": 1302197249, "location": 354, "mark": 2
+           |"id": 100000, "user": 2, "visited_at": 1302197249, "location": 11, "mark": 38
            |}
         """.stripMargin)
 
@@ -278,7 +278,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     "return visit with id = 100000" in {
       // tests:
       Get("/visits/100000") ~> smallRoute ~> check {
-        responseAs[String] shouldEqual "{\"location\":354,\"visited_at\":1302197249,\"id\":100000,\"mark\":2,\"user\":2}"
+        responseAs[String] shouldEqual "{\"location\":11,\"visited_at\":1302197249,\"id\":100000,\"mark\":38,\"user\":2}"
       }
     }
 
@@ -352,6 +352,37 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
+    "/locations/11/avg test post" in {
+      // tests:
+      Get("/locations/11/avg") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{\"avg\":3.5}"
+      }
+    }
+
+    "/visits/100000" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           | "user": 2, "visited_at": 1302197249, "location": 10, "mark": 2
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/visits/100000",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+
+
+
     "/locations/310 post 2" in {
       // tests:
       val jsonRequest = ByteString(
@@ -401,6 +432,15 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       // tests:
       Get("/locations/310") ~> smallRoute ~> check {
         responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Белоруссия\",\"id\":310,\"place\":\"Фонтан\",\"distance\":46}"
+      }
+    }
+
+
+    "/locations/11/avg test new post" in {
+      // tests:
+      Get("/locations/11/avg") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{\"avg\":2.65854}"
       }
     }
 

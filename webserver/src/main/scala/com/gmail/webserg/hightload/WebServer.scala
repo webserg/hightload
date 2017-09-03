@@ -96,14 +96,17 @@ object WebServer {
 
     val visitActor = system.actorOf(RoundRobinPool(2).props(Props(
       new VisitQueryActor(usersList.map(v => v.id).toVector, visitsMap, locationMap,
-        visitsList.groupBy(v => v.user).map(k => (k._1, k._2.map(i => i.id).toList)),
-        visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id).toList))
+        visitsList.groupBy(v => v.user).map(k => (k._1, k._2.map(i => i.id).toList))
+
       ))),
       name = VisitQueryActor.name)
 
     val locationActor = system.actorOf(Props(
-      new LocationQueryActor(usersList.map(v => v.id -> UserLocation(v.id, v.birth_date, v.gender)).toMap, locationList.map(v => v.id -> v).toMap,
-        visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id -> i).toMap))
+      new LocationQueryActor(
+        usersList.map(v => v.id -> UserLocation(v.id, v.birth_date, v.gender)).toMap,
+        locationList.map(v => v.id -> v).toMap,
+        visitsMap,
+        visitsList.groupBy(v => v.location).map(locVisit => (locVisit._1, locVisit._2.map(i => i.id).toList))
         , generationDateTime
       )),
       name = LocationQueryActor.name)

@@ -12,7 +12,7 @@ class VisitQueryActor(var users: Vector[Int],
                       var visits: Map[Int, Visit],
                       var locations: Map[Int, Location],
                       var userVisits: Map[Int, List[Int]],
-                      var locationVisits: Map[Int, List[Int]])
+                      )
   extends Actor with ActorLogging {
 
   override def preStart() = {
@@ -60,10 +60,6 @@ class VisitQueryActor(var users: Vector[Int],
           userVisits = userVisits + (oldVisit.user -> remove(newVisit.id, userVisits.getOrElse(oldVisit.user, List())))
           userVisits = userVisits + (newVisit.user -> (newVisit.id :: userVisits.getOrElse(nuser, List())))
         }
-        if (oldVisit.user != newVisit.user) {
-          locationVisits = locationVisits + (oldVisit.location -> remove(newVisit.id, locationVisits.getOrElse(oldVisit.location, List())))
-          locationVisits = locationVisits + (newVisit.location -> (newVisit.id :: locationVisits.getOrElse(nlocation, List())))
-        }
         context.actorSelection("/user/" + QueryRouter.name) ! newVisit
 
       } else sender() ! None
@@ -75,7 +71,6 @@ class VisitQueryActor(var users: Vector[Int],
         val newVisit = Visit(nid, q.location.get, q.user.get, q.visited_at.get, q.mark.get)
         visits = visits + (nid -> newVisit)
         userVisits = userVisits + (newVisit.user -> (newVisit.id :: userVisits.getOrElse(newVisit.user, List())))
-        locationVisits = locationVisits + (newVisit.location -> (newVisit.id :: locationVisits.getOrElse(newVisit.location, List())))
         context.actorSelection("/user/" + QueryRouter.name) ! newVisit
 
       } else sender() ! None

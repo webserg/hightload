@@ -87,7 +87,7 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
       (addr.userActor ? q) to sender
 
     case q: User =>
-      addr.locationActor ! Broadcast(q)
+      addr.locationActor ! q
       addr.visitActor ! Broadcast(q)
 
     case q: VisitsPostQueryParameter =>
@@ -97,7 +97,7 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
       (addr.visitActor ? Broadcast(q)) to sender
 
     case q: Visit =>
-      addr.locationActor ! Broadcast(q)
+      addr.locationActor ! q
 
     case q: VisitQuery =>
       (addr.visitActor ? q.id) to sender

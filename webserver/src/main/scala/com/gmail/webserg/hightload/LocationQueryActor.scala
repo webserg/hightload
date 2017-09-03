@@ -10,7 +10,8 @@ import com.gmail.webserg.hightload.UserDataReader.{User, UserLocation}
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 
 class LocationQueryActor(
-                          var users: Map[Int, UserLocation], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]],
+                          var users: Map[Int, UserLocation], var locations: Map[Int, Location], var visits: Map[Int, Visit],
+                          var locationVisits: Map[Int, List[Int]],
                           val generationDateTime: LocalDateTime)
   extends Actor with ActorLogging {
 
@@ -29,6 +30,8 @@ class LocationQueryActor(
     q.id.isDefined && q.city.isDefined && q.country.isDefined && q.distance.isDefined && q.place.isDefined
   }
 
+  def remove(num: Int, list: List[Int]) = list diff List(num)
+
   override def receive: Receive = {
 
     case query: LocationQuery =>
@@ -37,24 +40,32 @@ class LocationQueryActor(
     case user: User =>
       users = users + (user.id -> UserLocation(user.id, user.birth_date, user.gender))
 
-    case visit: Visit =>
-      locationVisits = locationVisits + (visit.location -> (locationVisits.getOrElse(visit.location, Map()) + (visit.id -> visit)))
-
+    case newVisit: Visit =>
+      val oldVisit = visits.get(newVisit.id)
+      visits = visits + (newVisit.id -> newVisit)
+      if (oldVisit.isDefined) {
+        if (oldVisit.get.location != newVisit.location) {
+          locationVisits = locationVisits + (oldVisit.get.location -> remove(newVisit.id, locationVisits.getOrElse(oldVisit.get.location, List())))
+          locationVisits = locationVisits + (newVisit.location -> (newVisit.id :: locationVisits.getOrElse(newVisit.location, List())))
+        }
+      } else {
+        locationVisits = locationVisits + (newVisit.location -> (newVisit.id :: locationVisits.getOrElse(newVisit.location, List())))
+      }
     case location: Location => locations + (location.id -> location)
 
     case query: LocationAvgQuery =>
       val locationsOpt = locationVisits.get(query.id)
       if (locationsOpt.isDefined) {
-        val locs = locationsOpt.get.values.toList
+        val locs = locationsOpt.get
         val filtered = locs
-          .ifFilter(query.param.fromDate.isDefined, _.visited_at > query.param.fromDate.get)
-          .ifFilter(query.param.toDate.isDefined, _.visited_at < query.param.toDate.get)
-          .ifFilter(query.param.fromAge.isDefined, v => getAge(generationDateTime, users(v.user).birth_date) >= query.param.fromAge.get)
-          .ifFilter(query.param.toAge.isDefined, v => getAge(generationDateTime, users(v.user).birth_date) < query.param.toAge.get)
-          .ifFilter(query.param.gender.isDefined, v => users(v.user).gender.equalsIgnoreCase(query.param.gender.get))
+          .ifFilter(query.param.fromDate.isDefined, visits(_).visited_at > query.param.fromDate.get)
+          .ifFilter(query.param.toDate.isDefined, visits(_).visited_at < query.param.toDate.get)
+          .ifFilter(query.param.fromAge.isDefined, v => getAge(generationDateTime, users(visits(v).user).birth_date) >= query.param.fromAge.get)
+          .ifFilter(query.param.toAge.isDefined, v => getAge(generationDateTime, users(visits(v).user).birth_date) < query.param.toAge.get)
+          .ifFilter(query.param.gender.isDefined, v => users(visits(v).user).gender.equalsIgnoreCase(query.param.gender.get))
 
 
-        val marks = filtered.map(v => v.mark)
+        val marks = filtered.map(visits(_).mark)
         val avgTmp = if (marks.isEmpty) 0.0 else marks.sum.toDouble / marks.length
         val avg = BigDecimal(avgTmp).setScale(5, BigDecimal.RoundingMode.HALF_UP).toDouble
         sender ! Option(LocationAvgQueryResult(avg))
