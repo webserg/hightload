@@ -11,7 +11,6 @@ import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.WebServer.ActorAddresses
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object QueryRouter {
@@ -50,7 +49,11 @@ object QueryRouter {
 
 
   case class LocationQueryParameter(fromDate: Option[Long], toDate: Option[Long],
-                                    fromAge: Option[Int], toAge: Option[Int], gender: Option[String])
+                                    fromAge: Option[Int], toAge: Option[Int], gender: Option[String]) {
+    if (gender.isDefined) {
+      require(gender.get.length == 1, "{}")
+    }
+  }
 
   case class UserVisitsQuery(id: Int, param: UserVisitsQueryParameter)
 

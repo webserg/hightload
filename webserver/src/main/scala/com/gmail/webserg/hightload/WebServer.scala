@@ -1,16 +1,18 @@
 package com.gmail.webserg.hightload
 
-import java.nio.file.Paths
+import java.nio.file.{NoSuchFileException, Paths}
+import java.time.{LocalDateTime, ZoneOffset}
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.Http
 import akka.routing.RoundRobinPool
 import akka.stream.ActorMaterializer
 import com.gmail.webserg.hightload.QueryRouter._
+import com.gmail.webserg.hightload.UserDataReader.UserLocation
 
 object WebServer {
 
-  case class WebServerProps(archoveDirName: String, dataDirName: String)
+  case class WebServerProps(archiveDirName: String, dataDirName: String)
 
   def main(args: Array[String]) {
     if (args.length < 2) {
@@ -48,13 +50,34 @@ object WebServer {
 
   def unZip(webServerProps: WebServerProps): Unit = {
     val out = webServerProps.dataDirName
-    val in = webServerProps.archoveDirName + "data.zip"
+    val in = webServerProps.archiveDirName + "data.zip"
     Archivator.unzip(in, Paths.get(out))
   }
 
-  case class ActorAddresses(userActor: ActorRef, visitActor: ActorRef, locationActor: ActorRef,locationGetActor: ActorRef)
+  case class ActorAddresses(userActor: ActorRef, visitActor: ActorRef, locationActor: ActorRef, locationGetActor: ActorRef)
+
+  def loadOptionFile(webServerProps: WebServerProps, system: ActorSystem): (LocalDateTime, Boolean) = {
+    val (generationDateTime, isRateRun) = try {
+      val optionLines = scala.io.Source.fromFile(new java.io.File(webServerProps.archiveDirName + "options.txt"))("UTF-8").getLines()
+      val generationTime = optionLines.next().toInt
+      val isRateRun = optionLines.next() == "1"
+      (
+        LocalDateTime.ofEpochSecond(
+          generationTime, 0, ZoneOffset.UTC),
+        isRateRun
+      )
+    } catch {
+      case _: NoSuchFileException =>
+        system.log.debug("Options file not found! Default to (datetime.now(), true)")
+        (LocalDateTime.now(ZoneOffset.UTC), true)
+    }
+
+    (generationDateTime, isRateRun)
+  }
 
   def loadData(webServerProps: WebServerProps, system: ActorSystem): ActorAddresses = {
+
+    val (generationDateTime, isRateRun) = loadOptionFile(webServerProps, system)
     val dataDir = webServerProps.dataDirName
     val usersFileList = new java.io.File(dataDir).listFiles.filter(_.getName.startsWith("users"))
     val usersList = (for {ls <- usersFileList} yield UserDataReader.readData(ls).users).flatten
@@ -72,24 +95,24 @@ object WebServer {
     system.log.debug("locs loaded size = " + locationList.length)
 
     val visitActor = system.actorOf(RoundRobinPool(2).props(Props(
-      new VisitQueryActor(usersList.map(v => v.id -> v).toMap, visitsMap, locationMap,
+      new VisitQueryActor(usersList.map(v => v.id).toVector, visitsMap, locationMap,
         visitsList.groupBy(v => v.user).map(k => (k._1, k._2.map(i => i.id).toList)),
         visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id).toList))
       ))),
       name = VisitQueryActor.name)
 
     val locationActor = system.actorOf(Props(
-      new LocationQueryActor(usersList.map(v => v.id -> v).toMap, locationList.map(v => v.id -> v).toMap,
+      new LocationQueryActor(usersList.map(v => v.id -> UserLocation(v.id, v.birth_date, v.gender)).toMap, locationList.map(v => v.id -> v).toMap,
         visitsList.groupBy(v => v.location).map(k => (k._1, k._2.map(i => i.id -> i).toMap))
-
+        , generationDateTime
       )),
       name = LocationQueryActor.name)
 
-     val locationGetActor = system.actorOf(Props(
-      new LocationGetActor(locationList.map(v => v.id -> v).toMap))  ,
+    val locationGetActor = system.actorOf(Props(
+      new LocationGetActor(locationList.map(v => v.id -> v).toMap)),
       name = LocationGetActor.name)
 
-    ActorAddresses(userActor = userActor, visitActor = visitActor, locationActor ,locationGetActor)
+    ActorAddresses(userActor = userActor, visitActor = visitActor, locationActor, locationGetActor)
   }
 
 

@@ -115,6 +115,21 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         responseAs[String] shouldEqual "{\"avg\":2.33333}"
       }
     }
+   "/locations/11/avg?gender=m&fromDate=1273795200&toAge=33" in {
+      // tests:
+      Get("/locations/11/avg?gender=m&fromDate=1273795200&toAge=33") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[String] shouldEqual "{\"avg\":4.0}"
+      }
+    }
+
+   "/locations/11/avg?gender=sfsfsdfsdf" in {
+      // tests:
+      Get("/locations/11/avg?gender=sdfsdfsdfsd") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+        responseAs[String] shouldEqual "{}"
+      }
+    }
 
     "/locations/463/avg?fromAge=21" in {
       // tests:
@@ -178,6 +193,26 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         s"""
            |{
            |  "birth_date": 616550400, "last_name": null, "email": "termilnodsitasen@mail.ru"
+           |}
+        """.stripMargin)
+
+      val postRequest = HttpRequest(
+        method = HttpMethods.POST,
+        uri = "/users/809",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+
+      postRequest ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+        responseAs[String] shouldEqual "{}"
+      }
+    }
+
+    "/users/809 post wrong data" in {
+      // tests:
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "birth_date": 616550400, "last_name": 1, "email": "termilnodsitasen@mail.ru"
            |}
         """.stripMargin)
 

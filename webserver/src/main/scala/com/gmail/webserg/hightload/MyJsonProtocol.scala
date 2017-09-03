@@ -44,6 +44,8 @@ object MyJsonProtocol extends DefaultJsonProtocol {
 
 object UserDataReader {
 
+  case class UserLocation(id: Int, birth_date: Long, gender: String)
+
   case class User(id: Int, first_name: String, last_name: String, birth_date: Long, gender: String, email: String) {
     def copy(newId: Int = id, nfirst_name: String = first_name, nlast_name: String = last_name, nbirth_date: Long = birth_date, ngender: String = gender, nemail: String = email): User =
       User(newId, nfirst_name, nlast_name, nbirth_date, ngender, nemail)

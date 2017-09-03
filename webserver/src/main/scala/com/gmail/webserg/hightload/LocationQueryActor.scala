@@ -1,16 +1,17 @@
 package com.gmail.webserg.hightload
 
-import java.time.LocalDate
+import java.time.{LocalDate, LocalDateTime, ZoneOffset}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import com.gmail.webserg.hightload.LocationDataReader.Location
 import com.gmail.webserg.hightload.LocationQueryActor.LocationAvgQueryResult
 import com.gmail.webserg.hightload.QueryRouter._
-import com.gmail.webserg.hightload.UserDataReader.User
+import com.gmail.webserg.hightload.UserDataReader.{User, UserLocation}
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 
 class LocationQueryActor(
-                         var users: Map[Int, User], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]])
+                          var users: Map[Int, UserLocation], var locations: Map[Int, Location], var locationVisits: Map[Int, Map[Int, Visit]],
+                          val generationDateTime: LocalDateTime)
   extends Actor with ActorLogging {
 
   override def preStart() = {
@@ -34,7 +35,7 @@ class LocationQueryActor(
       sender ! locations.get(query.id)
 
     case user: User =>
-      users = users + (user.id -> user)
+      users = users + (user.id -> UserLocation(user.id, user.birth_date, user.gender))
 
     case visit: Visit =>
       locationVisits = locationVisits + (visit.location -> (locationVisits.getOrElse(visit.location, Map()) + (visit.id -> visit)))
@@ -46,10 +47,10 @@ class LocationQueryActor(
       if (locationsOpt.isDefined) {
         val locs = locationsOpt.get.values.toList
         val filtered = locs
-          .ifFilter(query.param.fromDate.isDefined, _.visited_at >= query.param.fromDate.get)
+          .ifFilter(query.param.fromDate.isDefined, _.visited_at > query.param.fromDate.get)
           .ifFilter(query.param.toDate.isDefined, _.visited_at < query.param.toDate.get)
-          .ifFilter(query.param.fromAge.isDefined, v => getAge(users(v.user).birth_date) >= query.param.fromAge.get)
-          .ifFilter(query.param.toAge.isDefined, v => getAge(users(v.user).birth_date) <= query.param.toAge.get)
+          .ifFilter(query.param.fromAge.isDefined, v => getAge(generationDateTime, users(v.user).birth_date) >= query.param.fromAge.get)
+          .ifFilter(query.param.toAge.isDefined, v => getAge(generationDateTime, users(v.user).birth_date) < query.param.toAge.get)
           .ifFilter(query.param.gender.isDefined, v => users(v.user).gender.equalsIgnoreCase(query.param.gender.get))
 
 
@@ -105,9 +106,14 @@ class LocationQueryActor(
 
   val today: LocalDate = LocalDate.now
 
-  private def getAge(bd: Long) = {
-    today.getYear - LocalDate.ofEpochDay(bd / SECONDS).getYear
-  }
+  import java.time.temporal.ChronoUnit.YEARS
+
+  def getAge(generationDateTime: LocalDateTime, bd: Long): Int =
+    LocalDateTime.ofEpochSecond(bd, 0, ZoneOffset.UTC).until(generationDateTime, YEARS).toInt
+
+  //  private def getAge(bd: Long) = {
+  //    today.getYear - LocalDate.ofEpochDay(bd / SECONDS).getYear
+  //  }
 }
 
 

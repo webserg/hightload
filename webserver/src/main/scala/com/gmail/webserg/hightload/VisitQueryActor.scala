@@ -8,7 +8,7 @@ import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
 
 
-class VisitQueryActor(var users: Map[Int, User],
+class VisitQueryActor(var users: Vector[Int],
                       var visits: Map[Int, Visit],
                       var locations: Map[Int, Location],
                       var userVisits: Map[Int, List[Int]],
@@ -22,7 +22,7 @@ class VisitQueryActor(var users: Map[Int, User],
 
   def validateNewPostVisitQuery(q: VisitsPostQueryParameter): Boolean = {
     q.id.isDefined && q.user.isDefined && q.location.isDefined && q.visited_at.isDefined && q.mark.isDefined &&
-      users.get(q.user.get).isDefined && locations.get(q.location.get).isDefined
+      users.isDefinedAt(q.user.get) && locations.get(q.location.get).isDefined
 
   }
 
@@ -40,7 +40,7 @@ class VisitQueryActor(var users: Map[Int, User],
       sender ! visits.get(id)
 
     case user: User =>
-      users = users + (user.id -> user)
+      users = users :+ user.id
 
     case location: Location =>
       locations = locations + (location.id -> location)
@@ -57,12 +57,12 @@ class VisitQueryActor(var users: Map[Int, User],
         val newVisit = Visit(oldVisit.id, nlocation, nuser, nvisit_at, nmark)
         visits = visits + (q.id -> newVisit)
         if (oldVisit.user != newVisit.user) {
-          userVisits = userVisits + (newVisit.user -> remove(newVisit.id, userVisits.getOrElse(oldVisit.user, List())))
-          userVisits = userVisits + (newVisit.location -> (newVisit.id :: userVisits.getOrElse(nuser, List())))
+          userVisits = userVisits + (oldVisit.user -> remove(newVisit.id, userVisits.getOrElse(oldVisit.user, List())))
+          userVisits = userVisits + (newVisit.user -> (newVisit.id :: userVisits.getOrElse(nuser, List())))
         }
         if (oldVisit.user != newVisit.user) {
-          locationVisits = locationVisits + (newVisit.id -> remove(newVisit.id, locationVisits.getOrElse(oldVisit.location, List())))
-          locationVisits = locationVisits + (newVisit.id -> (newVisit.id :: locationVisits.getOrElse(nlocation, List())))
+          locationVisits = locationVisits + (oldVisit.location -> remove(newVisit.id, locationVisits.getOrElse(oldVisit.location, List())))
+          locationVisits = locationVisits + (newVisit.location -> (newVisit.id :: locationVisits.getOrElse(nlocation, List())))
         }
         context.actorSelection("/user/" + QueryRouter.name) ! newVisit
 
@@ -87,7 +87,7 @@ class VisitQueryActor(var users: Map[Int, User],
       if (userVisitsRes.isDefined) {
 
         val filtered = userVisitsRes.get
-          .ifFilter(queryUserVisits.param.fromDate.isDefined, v => visits(v).visited_at >= queryUserVisits.param.fromDate.get)
+          .ifFilter(queryUserVisits.param.fromDate.isDefined, v => visits(v).visited_at > queryUserVisits.param.fromDate.get)
           .ifFilter(queryUserVisits.param.toDate.isDefined, v => visits(v).visited_at < queryUserVisits.param.toDate.get)
           .ifFilter(queryUserVisits.param.country.isDefined, v => locations(visits(v).location).country.equalsIgnoreCase(queryUserVisits.param.country.get))
           .ifFilter(queryUserVisits.param.toDistance.isDefined, v => locations(visits(v).location).distance < queryUserVisits.param.toDistance.get)
@@ -97,7 +97,7 @@ class VisitQueryActor(var users: Map[Int, User],
           VisitsQueryResult(vv.mark, vv.visited_at, locations(vv.location).place)
         })
         sender ! Some(sortedRes)
-      } else if (users.get(queryUserVisits.id).isDefined) {
+      } else if (users.isDefinedAt(queryUserVisits.id)) {
         sender ! Some(List[Visit]())
       } else {
         sender ! None
