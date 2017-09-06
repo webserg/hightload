@@ -1,8 +1,9 @@
 package com.gmail.webserg.hightload
 
 import reactivemongo.api._
-import reactivemongo.api.collections.default.BSONCollection
+import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.BSONDocument
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -14,15 +15,15 @@ object Database {
   def connect(): BSONCollection = {
 
     val driver = new MongoDriver
-    val connection = driver.connection(List("localhost"))
+    val connection = driver.connection(List("127.0.0.1"))
 
-    val db = connection("akka")
-    db.collection("stocks")
+    val db = connection("travel")
+    db.collection("users")
   }
 
   def findAllTickers(): Future[List[BSONDocument]] = {
     val query = BSONDocument()
-    val filter = BSONDocument("Company" -> 1, "Country" -> 1, "Ticker" -> 1)
+    val filter = BSONDocument("id" -> 5000)
 
     // which results in a Future[List[BSONDocument]]
     Database.collection
@@ -31,8 +32,8 @@ object Database {
       .collect[List]()
   }
 
-  def findTicker(ticker: String) : Future[Option[BSONDocument]] = {
-    val query = BSONDocument("Ticker" -> ticker)
+  def findTicker(id: Int) : Future[Option[BSONDocument]] = {
+    val query = BSONDocument("id" -> id)
 
     Database.collection
       .find(query)
