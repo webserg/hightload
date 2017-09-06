@@ -9,6 +9,7 @@ import akka.util.{ByteString, Timeout}
 import com.gmail.webserg.hightload.WebServer.WebServerProps
 import com.gmail.webserg.hightload.{QueryRouter, WebRoute, WebServer}
 import org.scalatest.{Matchers, WordSpec}
+
 import scala.concurrent.duration._
 
 
@@ -115,7 +116,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         responseAs[String] shouldEqual "{\"avg\":2.33333}"
       }
     }
-   "/locations/11/avg?gender=m&fromDate=1273795200&toAge=33" in {
+    "/locations/11/avg?gender=m&fromDate=1273795200&toAge=33" in {
       // tests:
       Get("/locations/11/avg?gender=m&fromDate=1273795200&toAge=33") ~> Route.seal(smallRoute) ~> check {
         status shouldEqual StatusCodes.OK
@@ -123,7 +124,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
-   "/locations/11/avg?gender=sfsfsdfsdf" in {
+    "/locations/11/avg?gender=sfsfsdfsdf" in {
       // tests:
       Get("/locations/11/avg?gender=sdfsdfsdfsd") ~> Route.seal(smallRoute) ~> check {
         status shouldEqual StatusCodes.BadRequest
@@ -236,6 +237,27 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
+    "/users/2000000/visits" in {
+      // tests:
+      Get("/users/200000/visits") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.NotFound
+      }
+    }
+
+    "/users/256/visits?toDistance=12" in {
+      // tests:
+      Get("/users/256/visits?toDistance=12") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.OK
+      }
+    }
+
+    "/users/10685/visits?toDistance=12&toDate=1139616000" in {
+      // tests:
+      Get("/users/10685/visits?toDistance=12&toDate=1139616000") ~> Route.seal(smallRoute) ~> check {
+        status shouldEqual StatusCodes.NotFound
+      }
+    }
+
 
     "/visits/new id null" in {
       // tests:
@@ -289,7 +311,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         status shouldEqual StatusCodes.OK
         val res = responseAs[String]
         println(res)
-        res.contains("1302197249") shouldBe(true)
+        res.contains("1302197249") shouldBe (true)
       }
     }
 
@@ -323,7 +345,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       }
     }
 
-     "return location with id = 310" in {
+    "return location with id = 310" in {
       // tests:
       Get("/locations/310") ~> smallRoute ~> check {
         responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Норвегия\",\"id\":310,\"place\":\"Склон\",\"distance\":17}"
@@ -381,8 +403,6 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     }
 
 
-
-
     "/locations/310 post 2" in {
       // tests:
       val jsonRequest = ByteString(
@@ -404,7 +424,6 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         responseAs[String] shouldEqual "{}"
       }
     }
-
 
 
     "/locations/27 post" in {
