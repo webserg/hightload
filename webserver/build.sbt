@@ -12,6 +12,9 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-json" % "1.3.3",
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
   "org.reactivemongo" %% "reactivemongo" % "0.12.6",
+//  "org.reactivemongo" %% "play2-reactivemongo" % "0.12.6",
+//  "com.typesafe.play" %% "play-json" % "2.4.0-M2",
+//  "org.reactivemongo" %% "reactivemongo-play-json" % "0.12.6",
   "com.typesafe.akka" %% "akka-http-testkit" % "10.0.9" % Test,
   "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 )

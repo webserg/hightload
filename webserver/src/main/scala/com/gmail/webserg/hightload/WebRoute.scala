@@ -7,12 +7,9 @@ import akka.http.scaladsl.server.Directives.{complete, get, onSuccess, pathPrefi
 import akka.http.scaladsl.server.{RejectionHandler, Route}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.gmail.webserg.hightload.LocationDataReader.Location
 import com.gmail.webserg.hightload.LocationQueryActor.LocationAvgQueryResult
 import com.gmail.webserg.hightload.MyJsonProtocol._
 import com.gmail.webserg.hightload.QueryRouter._
-import com.gmail.webserg.hightload.UserDataReader.User
-import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
 
 import scala.concurrent.Future
@@ -21,6 +18,9 @@ import scala.concurrent.duration._
 object WebRoute {
   implicit val timeout: Timeout = 3000 millisecond
 
+  private def validateNewPostUserQuery(q: UserPostQueryParameter) = {
+    q.id.isDefined && q.first_name.isDefined && q.last_name.isDefined && q.birth_date.isDefined && q.email.isDefined && q.gender.isDefined
+  }
 
   implicit def myRejectionHandler =
     RejectionHandler.newBuilder()
@@ -36,17 +36,18 @@ object WebRoute {
           entity(as[String]) {
             q =>
               if (q.contains("null")) {
+
                 complete(StatusCodes.BadRequest, "{}")
+
               } else {
 
                 entity(as[UserPostQueryParameter]) {
                   queryParam =>
-
-                    val maybeItem: Future[Option[String]] = (queryRouter ? UserPostQuery(id, queryParam)).mapTo[Option[String]]
-
-                    onSuccess(maybeItem) {
+                    onSuccess(Database.getUser(id)) {
                       case None => complete(StatusCodes.NotFound)
                       case Some(item) => {
+                        val user = item
+                        queryRouter ! UserPostQuery(id, queryParam, user)
                         complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
                       }
                     }
@@ -66,13 +67,11 @@ object WebRoute {
 
                 entity(as[UserPostQueryParameter]) {
                   queryParam =>
-                    val maybeItem: Future[Option[String]] = (queryRouter ? queryParam).mapTo[Option[String]]
-
-                    onSuccess(maybeItem) {
-                      case None => complete(StatusCodes.NotFound)
-                      case Some(item) => {
-                        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
-                      }
+                    if (UserQueryActor.validateNewPostUserQuery(queryParam)) {
+                      queryRouter ! queryParam
+                      complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                    } else {
+                      complete(StatusCodes.BadRequest)
                     }
                 }
               }
@@ -89,13 +88,12 @@ object WebRoute {
 
                 entity(as[VisitsPostQueryParameter]) {
                   queryParam =>
-                    val maybeItem: Future[Option[String]] = (queryRouter ? VisitPostQuery(id, queryParam)).mapTo[Option[String]]
-
-                    onSuccess(maybeItem) {
+                    onSuccess(Database.getVisit(id)) {
                       case None => complete(StatusCodes.NotFound)
-                      case Some(item) => {
+                      case Some(item) =>
+                        queryRouter ! VisitPostQuery(id, queryParam, item)
                         complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
-                      }
+
                     }
                 }
               }
@@ -135,11 +133,10 @@ object WebRoute {
 
                 entity(as[LocationPostQueryParameter]) {
                   queryParam =>
-                    val maybeItem: Future[Option[String]] = (queryRouter ? LocationPostQuery(id, queryParam)).mapTo[Option[String]]
-
-                    onSuccess(maybeItem) {
+                    onSuccess(Database.getLocation(id)) {
                       case None => complete(StatusCodes.NotFound)
                       case Some(item) => {
+                        queryRouter ! LocationPostQuery(id, queryParam, item)
                         complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
                       }
                     }
@@ -158,13 +155,11 @@ object WebRoute {
 
                 entity(as[LocationPostQueryParameter]) {
                   queryParam =>
-                    val maybeItem: Future[Option[String]] = (queryRouter ? queryParam).mapTo[Option[String]]
-
-                    onSuccess(maybeItem) {
-                      case None => complete(StatusCodes.BadRequest)
-                      case Some(item) => {
-                        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
-                      }
+                    if (LocationQueryActor.validateNewPostLocationQuery(queryParam)) {
+                      queryRouter ! queryParam
+                      complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                    } else {
+                      complete(StatusCodes.BadRequest)
                     }
                 }
               }
@@ -196,9 +191,7 @@ object WebRoute {
       } ~
       get {
         pathPrefix("users" / IntNumber) { id =>
-          val maybeItem: Future[Option[User]] = (queryRouter ? UserQuery(id)).mapTo[Option[User]]
-
-          onSuccess(maybeItem) {
+          onSuccess(Database.getUser(id)) {
             case None => complete(StatusCodes.NotFound)
             case Some(item) => {
               import MyJsonProtocol._
@@ -209,14 +202,12 @@ object WebRoute {
       } ~
       get {
         pathPrefix("visits" / IntNumber) { id =>
-          val maybeItem: Future[Option[Visit]] = (queryRouter ? VisitQuery(id)).mapTo[Option[Visit]]
+          onSuccess(Database.getVisit(id)) {
 
-          onSuccess(maybeItem) {
             case None => complete(StatusCodes.NotFound)
-            case Some(item) => {
-              import MyJsonProtocol._
+            case Some(item) =>
               complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, visitFormat.write(item).toString()))
-            }
+
           }
         }
       } ~
@@ -244,14 +235,10 @@ object WebRoute {
       }
     } ~ get {
       pathPrefix("locations" / IntNumber) { id =>
-        val maybeItem: Future[Option[Location]] = (queryRouter ? LocationQuery(id)).mapTo[Option[Location]]
-
-        onSuccess(maybeItem) {
+        onSuccess(Database.getLocation(id)) {
           case None => complete(StatusCodes.NotFound)
-          case Some(item) => {
-            import MyJsonProtocol._
+          case Some(item) =>
             complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, locationFormat.write(item).toString()))
-          }
         }
       }
     }

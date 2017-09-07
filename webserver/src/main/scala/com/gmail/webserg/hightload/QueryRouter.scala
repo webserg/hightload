@@ -16,12 +16,6 @@ import scala.concurrent.duration._
 object QueryRouter {
   val name = "queryRouter"
 
-  case class UserQuery(id: Int)
-
-  case class VisitQuery(id: Int)
-
-  case class LocationQuery(id: Int)
-
   case class UserVisitsQueryParameter(fromDate: Option[Long] = None, toDate: Option[Long] = None,
                                       country: Option[String] = None, toDistance: Option[Int] = None)
 
@@ -29,7 +23,7 @@ object QueryRouter {
                                      id: Option[Int],
                                      first_name: Option[String],
                                      last_name: Option[String],
-                                     birth_date: Option[Long],
+                                     birth_date: Option[Int],
                                      gender: Option[String],
                                      email: Option[String])
 
@@ -37,7 +31,7 @@ object QueryRouter {
                                        id: Option[Int],
                                        location: Option[Int],
                                        user: Option[Int],
-                                       visited_at: Option[Long],
+                                       visited_at: Option[Int],
                                        mark: Option[Int])
 
   case class LocationPostQueryParameter(
@@ -57,11 +51,11 @@ object QueryRouter {
 
   case class UserVisitsQuery(id: Int, param: UserVisitsQueryParameter)
 
-  case class UserPostQuery(id: Int, param: UserPostQueryParameter)
+  case class UserPostQuery(id: Int, param: UserPostQueryParameter, oldUser : User)
 
-  case class VisitPostQuery(id: Int, param: VisitsPostQueryParameter)
+  case class VisitPostQuery(id: Int, param: VisitsPostQueryParameter, oldVisit: Visit)
 
-  case class LocationPostQuery(id: Int, param: LocationPostQueryParameter)
+  case class LocationPostQuery(id: Int, param: LocationPostQueryParameter, oldLoc : Location)
 
   case class LocationAvgQuery(id: Int, param: LocationQueryParameter)
 
@@ -77,9 +71,6 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
 
 
   override def receive: Receive = {
-    case q: UserQuery =>
-      (addr.userActor ? q.id) to sender
-
     case q: UserPostQuery =>
       (addr.userActor ? q) to sender
 
@@ -99,17 +90,11 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
     case q: Visit =>
       addr.locationActor ! q
 
-    case q: VisitQuery =>
-      (addr.visitActor ? q.id) to sender
-
     case q: UserVisitsQuery =>
       (addr.visitActor ? q) to sender
 
     case q: LocationAvgQuery =>
       (addr.locationActor ? q) to sender
-
-    case q: LocationQuery =>
-      (addr.locationGetActor ? q) to sender
 
     case q: LocationPostQueryParameter =>
       (addr.locationActor ? q) to sender
@@ -119,6 +104,5 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
 
     case q: Location =>
       addr.visitActor ! Broadcast(q)
-      addr.locationGetActor ! q
   }
 }

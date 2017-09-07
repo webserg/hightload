@@ -29,7 +29,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     "return user with id = 1" in {
       // tests:
       Get("/users/1") ~> smallRoute ~> check {
-        responseAs[String] shouldEqual "{\"first_name\":\"Инна\",\"email\":\"iwgeodwa@list.me\",\"id\":1,\"last_name\":\"Терыкатева\",\"birth_date\":-712108800,\"gender\":\"f\"}"
+        responseAs[String] shouldEqual "{\"first_name\":\"Кирилл\",\"email\":\"misatemtoctetponah@mail.ru\",\"id\":1,\"last_name\":\"Стыкашечан\",\"birth_date\":-777340800,\"gender\":\"m\"}"
       }
     }
 
@@ -173,7 +173,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       val jsonRequest = ByteString(
         s"""
            |{
-           |  "first_name": "\u041b\u044e\u0431\u043e\u0432\u044c", "last_name": "\u0414\u0430\u043d\u043b\u0435\u043d\u043a\u0430\u044f", "gender": "f", "id": 1032, "birth_date": -680054400, "email": "udgivwev@mail.ru"
+           |  "first_name": "\u041b\u044e\u0431\u043e\u0432\u044c", "last_name": "\u0414\u0430\u043d\u043b\u0435\u043d\u043a\u0430\u044f", "gender": "f", "id": 10000032, "birth_date": -680054400, "email": "udgivwev@mail.ru"
            |}
         """.stripMargin)
 
@@ -334,21 +334,28 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     "return user with id = 809" in {
       // tests:
       Get("/users/809") ~> smallRoute ~> check {
-        responseAs[String] shouldEqual "{\"first_name\":\"Денис\",\"email\":\"termilnodsitasen@mail.ru\",\"id\":809,\"last_name\":\"serg\",\"birth_date\":616550400,\"gender\":\"m\"}"
+        responseAs[String] shouldEqual "{\"first_name\":\"Инесса\",\"email\":\"sosesatecimbude@inbox.ru\",\"id\":809,\"last_name\":\"Колыкалова\",\"birth_date\":-686793600,\"gender\":\"f\"}"
+      }
+    }
+
+    "return user with id = 10000032" in {
+      // tests:
+      Get("/users/10000032") ~> smallRoute ~> check {
+        responseAs[String] shouldEqual "{\"first_name\":\"Любовь\",\"email\":\"udgivwev@mail.ru\",\"id\":10000032,\"last_name\":\"Данленкая\",\"birth_date\":-680054400,\"gender\":\"f\"}"
       }
     }
 
     "return user with id = 1032" in {
       // tests:
       Get("/users/1032") ~> smallRoute ~> check {
-        responseAs[String] shouldEqual "{\"first_name\":\"Любовь\",\"email\":\"udgivwev@mail.ru\",\"id\":1032,\"last_name\":\"Данленкая\",\"birth_date\":-680054400,\"gender\":\"f\"}"
+        responseAs[String] shouldEqual "{\"first_name\":\"Вадим\",\"email\":\"adnotit@yandex.ru\",\"id\":1032,\"last_name\":\"Стыкушуный\",\"birth_date\":-122342400,\"gender\":\"m\"}"
       }
     }
 
     "return location with id = 310" in {
       // tests:
       Get("/locations/310") ~> smallRoute ~> check {
-        responseAs[String] shouldEqual "{\"city\":\"Роттеринск\",\"country\":\"Норвегия\",\"id\":310,\"place\":\"Склон\",\"distance\":17}"
+        responseAs[String] shouldEqual "{\"city\":\"Волоинск\",\"country\":\"Литва\",\"id\":310,\"place\":\"Серпантин\",\"distance\":93}"
       }
     }
 
@@ -487,14 +494,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         responseAs[String] shouldEqual "{}"
       }
     }
-    "return visit with id = 100616" in {
-      // tests:
-      Get("/users/1") ~> smallRoute ~> check {
-        val res = responseAs[String]
-        println(res)
-        res shouldEqual "{\"first_name\":\"Инна\",\"email\":\"iwgeodwa@list.me\",\"id\":1,\"last_name\":\"Терыкатева\",\"birth_date\":-712108800,\"gender\":\"f\"}"
-      }
-    }
+
 
 
   }
