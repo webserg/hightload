@@ -63,7 +63,7 @@ object QueryRouter {
 }
 
 class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
-  implicit val timeout = Timeout(3000 millisecond)
+  implicit val timeout = Timeout(30000 millisecond)
 
   override def preStart() = {
     log.debug("Starting QueryRouter" + self.path)

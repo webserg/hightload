@@ -16,7 +16,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 
 object WebRoute {
-  implicit val timeout: Timeout = 3000 millisecond
+  implicit val timeout: Timeout = 30000 millisecond
 
   private def validateNewPostUserQuery(q: UserPostQueryParameter) = {
     q.id.isDefined && q.first_name.isDefined && q.last_name.isDefined && q.birth_date.isDefined && q.email.isDefined && q.gender.isDefined
