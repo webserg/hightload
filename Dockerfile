@@ -6,29 +6,41 @@ RUN \
 
 # install java
 RUN \
-  apk add --no-cache openjdk9
+  apk add --no-cache openjdk8
+
+# install jq
+RUN \
+  apk add --no-cache jq
+
+# install zip
+RUN \
+  apk add --no-cache zip
 
 # install mongodb
 RUN \
-  echo '@testing http://dl-4.alpinelinux.org/alpine/edge/testing' >> /etc/apk/repositories && \
-  apk add --no-cache mongodb@testing && \
-  rm /usr/bin/mongosniff /usr/bin/mongoperf
+  apk add --no-cache mongodb
 
-VOLUME ["/data/db"]
+# install mongodb
+RUN \
+  apk add --no-cache mongodb-tools
 
 RUN \
-  mkdir /tmp/hightload && \
-  mkdir /tmp/data && \
-  mkdir /tmp/hightload/data && \
-  unzip /tmp/data/data.zip -d /tmp/hightload/data
+  mkdir /tmp/hightload
 
+VOLUME ["/tmp/hightload/data"]
 
 WORKDIR /tmp/hightload
+#RUN \
+#  mkdir /tmp/data 
 ADD ./webserver/target/scala-2.12 /tmp/hightload
-COPY ./data.zip /tmp/data
+#COPY ./data.zip /tmp/data
 RUN \
-    process.sh
+  mkdir /tmp/unzipped && \
+  unzip /tmp/data/data.zip -d /tmp/unzipped; exit 0
+RUN \
+  mkdir -p /data/db && \
+  ./process.sh
 EXPOSE 80
 
-CMD java -server -Xms3488m -Xmx3488m -XX:+UseParallelGC -XX:NewSize=1300m -XX:MaxNewSize=1300m -XX:MaxDirectMemorySize=512m -XX:MaxMetaspaceSize=48m -XX:CompressedClassSpaceSize=48m -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -Djava.lang.Integer.IntegerCache.high=11000000 -Xlog:gc* --add-modules java.xml.bind -jar ./webserver.jar /tmp/data/ /tmp/hightLoad/data/
+CMD java -server -Xms3488m -Xmx3488m -jar ./webserver.jar /tmp/data/ /tmp/unzipped
 
