@@ -11,7 +11,7 @@ import org.scalatest.{Matchers, WordSpec}
 
 class AllQueryTests extends WordSpec with Matchers with ScalatestRouteTest {
 
-  val webserverProps: WebServerProps = WebServerProps("C:\\git\\hightLoad\\", "C:\\git\\hightLoad\\data\\")
+  val webserverProps: WebServerProps = WebServerProps("C:\\git\\hightLoad\\", "C:\\tmp\\data\\data\\FULL\\data\\")
   val addr = WebServer.loadData(webserverProps, system)
   val queryRouter: ActorRef = system.actorOf(RoundRobinPool(25).props(Props(new QueryRouter(addr))), QueryRouter.name)
 

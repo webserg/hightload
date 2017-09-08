@@ -16,12 +16,6 @@ object DatabaseTest extends App {
 
   implicit def personReader: BSONDocumentReader[User] = Macros.reader[User]
 
-  Database.getUser(1) onComplete {
-    case Success(bson) => {
-      println(bson.get)
-    }
-    case Failure(t) => println("NOne" + t.getMessage)
-  }
 
   Database.getVisitsByUser(12995) onComplete {
     case Success(bson) => {

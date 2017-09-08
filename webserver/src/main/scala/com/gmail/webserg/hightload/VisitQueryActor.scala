@@ -6,7 +6,7 @@ import com.gmail.webserg.hightload.QueryRouter.{UserVisitsQuery, VisitPostQuery,
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
-
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 object VisitQueryActor {
@@ -40,7 +40,7 @@ class VisitQueryActor(var users: Vector[Int],
     }
   }
 
-  import scala.concurrent.ExecutionContext.Implicits.global
+
 
   def remove(num: Int, list: List[Int]) = list diff List(num)
 

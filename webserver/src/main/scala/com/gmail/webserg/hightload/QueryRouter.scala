@@ -16,6 +16,12 @@ import scala.concurrent.duration._
 object QueryRouter {
   val name = "queryRouter"
 
+  case class UserQuery(id: Int)
+
+  case class VisitQuery(id: Int)
+
+  case class LocationQuery(id: Int)
+
   case class UserVisitsQueryParameter(fromDate: Option[Long] = None, toDate: Option[Long] = None,
                                       country: Option[String] = None, toDistance: Option[Int] = None)
 
@@ -23,7 +29,7 @@ object QueryRouter {
                                      id: Option[Int],
                                      first_name: Option[String],
                                      last_name: Option[String],
-                                     birth_date: Option[Int],
+                                     birth_date: Option[Long],
                                      gender: Option[String],
                                      email: Option[String])
 
@@ -31,7 +37,7 @@ object QueryRouter {
                                        id: Option[Int],
                                        location: Option[Int],
                                        user: Option[Int],
-                                       visited_at: Option[Int],
+                                       visited_at: Option[Long],
                                        mark: Option[Int])
 
   case class LocationPostQueryParameter(
@@ -42,8 +48,8 @@ object QueryRouter {
                                          distance: Option[Int])
 
 
-  case class LocationQueryParameter(fromDate: Option[Long], toDate: Option[Long],
-                                    fromAge: Option[Int], toAge: Option[Int], gender: Option[String]) {
+  case class LocationQueryParameter(fromDate: Option[Long] = None, toDate: Option[Long] = None,
+                                    fromAge: Option[Long] = None, toAge: Option[Long] = None, gender: Option[String] = None) {
     if (gender.isDefined) {
       require(gender.get.length == 1, "{}")
     }
@@ -51,11 +57,11 @@ object QueryRouter {
 
   case class UserVisitsQuery(id: Int, param: UserVisitsQueryParameter)
 
-  case class UserPostQuery(id: Int, param: UserPostQueryParameter, oldUser : User)
+  case class UserPostQuery(id: Int, param: UserPostQueryParameter)
 
   case class VisitPostQuery(id: Int, param: VisitsPostQueryParameter, oldVisit: Visit)
 
-  case class LocationPostQuery(id: Int, param: LocationPostQueryParameter, oldLoc : Location)
+  case class LocationPostQuery(id: Int, param: LocationPostQueryParameter)
 
   case class LocationAvgQuery(id: Int, param: LocationQueryParameter)
 
@@ -63,7 +69,7 @@ object QueryRouter {
 }
 
 class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
-  implicit val timeout = Timeout(30000 millisecond)
+  implicit val timeout = Timeout(10000 millisecond)
 
   override def preStart() = {
     log.debug("Starting QueryRouter" + self.path)
@@ -71,6 +77,9 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
 
 
   override def receive: Receive = {
+    case q: UserQuery =>
+      (addr.userActor ? q.id) to sender
+
     case q: UserPostQuery =>
       (addr.userActor ? q) to sender
 
@@ -78,7 +87,6 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
       (addr.userActor ? q) to sender
 
     case q: User =>
-      addr.locationActor ! q
       addr.visitActor ! Broadcast(q)
 
     case q: VisitsPostQueryParameter =>
@@ -94,6 +102,9 @@ class QueryRouter(addr: ActorAddresses) extends Actor with ActorLogging {
       (addr.visitActor ? q) to sender
 
     case q: LocationAvgQuery =>
+      (addr.userActor ? q) to sender
+
+    case q: LocationQuery =>
       (addr.locationActor ? q) to sender
 
     case q: LocationPostQueryParameter =>

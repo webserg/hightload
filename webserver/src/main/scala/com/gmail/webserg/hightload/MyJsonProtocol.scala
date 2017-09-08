@@ -9,7 +9,7 @@ import com.gmail.webserg.hightload.QueryRouter.{LocationPostQueryParameter, User
 import com.gmail.webserg.hightload.UserDataReader.User
 import com.gmail.webserg.hightload.VisitDataReader.Visit
 import com.gmail.webserg.hightload.VisitQueryActor.VisitsQueryResult
-import reactivemongo.bson.{BSONDocumentReader, BSONDocumentWriter, Macros}
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, BSONNumberLike, BSONReader, BSONValue, Macros}
 import spray.json._
 
 case class LocationsList[A](locations: List[A])
@@ -40,9 +40,6 @@ object MyJsonProtocol extends DefaultJsonProtocol {
   implicit val userPostQueryParameterFormat = jsonFormat6(UserPostQueryParameter)
   implicit val visitPostQueryParameterFormat = jsonFormat5(VisitsPostQueryParameter)
   implicit val locationPostQueryParameterFormat = jsonFormat5(LocationPostQueryParameter)
-//  implicit val orderUM: FromRequestUnmarshaller[UserPostQueryParameter] = sprayJsonUnmarshaller(userPostQueryParameterFormat)
-  implicit def userBsonReader: BSONDocumentReader[User] = Macros.reader[User]
-  implicit def userBsonWriter: BSONDocumentWriter[User] = Macros.writer[User]
   implicit def locBsonReader: BSONDocumentReader[Location] = Macros.reader[Location]
   implicit def locBsonWriter: BSONDocumentWriter[Location] = Macros.writer[Location]
   implicit def visitBsonReader: BSONDocumentReader[Visit] = Macros.reader[Visit]
@@ -53,10 +50,7 @@ object UserDataReader {
 
   case class UserLocation(id: Int, birth_date: Long, gender: String)
 
-  case class User(id: Int, first_name: String, last_name: String, birth_date: Int, gender: String, email: String) {
-    def copy(newId: Int = id, nfirst_name: String = first_name, nlast_name: String = last_name, nbirth_date: Int = birth_date, ngender: String = gender, nemail: String = email): User =
-      User(newId, nfirst_name, nlast_name, nbirth_date, ngender, nemail)
-  }
+  case class User(id: Int, first_name: String, last_name: String, birth_date: Long, gender: String, email: String)
 
   def readData(in: File): UserList[User] = {
     import MyJsonProtocol._
@@ -90,13 +84,14 @@ object LocationDataWriter {
 
 object VisitDataReader {
 
-  final case class Visit(id: Int, location: Int, user: Int, visited_at: Int, mark: Int)
+  final case class Visit(id: Int, location: Int, user: Int, visited_at: Long, mark: Int)
 
   def readData(in: File): VisitsList[Visit] = {
     import MyJsonProtocol._
     val input = scala.io.Source.fromFile(in)("UTF-8").mkString.parseJson
     input.convertTo[VisitsList[Visit]]
   }
+
 
 
 }
