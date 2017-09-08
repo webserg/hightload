@@ -34,29 +34,30 @@ object WebRoute {
   def createRoute(queryRouter: ActorRef): Route = {
     post {
       handleRejections(myRejectionHandler) {
-      pathPrefix("users" / IntNumber) { id =>
-        entity(as[String]) {
-          q =>
-            if (q.contains("null")) {
-              complete(StatusCodes.BadRequest, "{}")
-            } else {
+        pathPrefix("users" / IntNumber) { id =>
+          entity(as[String]) {
+            q =>
+              if (q.contains("null")) {
+                complete(StatusCodes.BadRequest, "{}")
+              } else {
 
-              entity(as[UserPostQueryParameter]) {
-                queryParam =>
+                entity(as[UserPostQueryParameter]) {
+                  queryParam =>
 
-                  val maybeItem: Future[Option[String]] = (queryRouter ? UserPostQuery(id, queryParam)).mapTo[Option[String]]
+                    val maybeItem: Future[Option[String]] = (queryRouter ? UserPostQuery(id, queryParam)).mapTo[Option[String]]
 
-                  onSuccess(maybeItem) {
-                    case None => complete(StatusCodes.NotFound)
-                    case Some(item) => {
-                      complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                    onSuccess(maybeItem) {
+                      case None => complete(StatusCodes.NotFound)
+                      case Some(item) => {
+                        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "{}"))
+                      }
                     }
-                  }
+                }
               }
-            }
+          }
         }
       }
-    } }~
+    } ~
       post {
         pathPrefix("users" / "new") {
           entity(as[String]) {
@@ -244,10 +245,9 @@ object WebRoute {
       pathPrefix("locations" / IntNumber) { id =>
         val maybeItem: Future[Option[Location]] = (queryRouter ? LocationQuery(id)).mapTo[Option[Location]]
 
-            onSuccess(maybeItem) {
+        onSuccess(maybeItem) {
           case None => complete(StatusCodes.NotFound)
           case Some(item) => {
-            import MyJsonProtocol._
             complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, locationFormat.write(item).toString()))
           }
         }

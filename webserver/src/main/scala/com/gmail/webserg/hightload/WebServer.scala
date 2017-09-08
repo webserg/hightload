@@ -23,7 +23,7 @@ object WebServer {
     implicit val materializer = ActorMaterializer()
     val actorAddresses = loadData(webServerProps, system)
 
-    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(50).props(Props(new QueryRouter(actorAddresses))), QueryRouter.name)
+    val queryRouter: ActorRef = system.actorOf(RoundRobinPool(100).props(Props(new QueryRouter(actorAddresses))), QueryRouter.name)
 
 
     // needed for the future flatMap/onComplete in the end
