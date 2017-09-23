@@ -30,17 +30,16 @@ RUN \
 VOLUME ["/tmp/hightload/data"]
 
 WORKDIR /tmp/hightload
-#RUN \
-#  mkdir /tmp/data 
+RUN \
+  mkdir /tmp/data
 ADD ./webserver/target/scala-2.12 /tmp/hightload
-#COPY ./data.zip /tmp/data
+COPY ./data.zip /tmp/data
 RUN \
   mkdir /tmp/unzipped && \
   unzip /tmp/data/data.zip -d /tmp/unzipped; exit 0
 RUN \
-  mkdir -p /data/db && \
-  ./process.sh
+  mkdir -p /data/db
 EXPOSE 80
 
-CMD java -server -Xms3488m -Xmx3488m -jar ./webserver.jar /tmp/data/ /tmp/unzipped
+CMD unzip /tmp/data/data.zip -d /tmp/unzipped && ./process.sh && java -server -Xms3488m -Xmx3488m -jar ./webserver.jar /tmp/data/ /tmp/unzipped
 
